@@ -1,0 +1,365 @@
+// =============================================================================
+// OS.Tech - Prisma Schema
+// Sistema de Gestao de Assistencia Tecnica de Computadores
+// =============================================================================
+// Datasource: SQLite (100% offline, arquivo local)
+// Database: SQLite com WAL mode para performance
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/main/database/generated"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+/// Status possiveis de uma Ordem de Servico
+/// Fluxo: ABERTA -> EM_DIAGNOSTICO -> AGUARDANDO_APROVACAO -> AGUARDANDO_PECA
+///        -> EM_EXECUCAO -> CONCLUIDA -> ENTREGUE
+/// Qualquer estado intermediario pode transitar para CANCELADA
+enum StatusOS {
+  ABERTA
+  EM_DIAGNOSTICO
+  AGUARDANDO_APROVACAO
+  AGUARDANDO_PECA
+  EM_EXECUCAO
+  CONCLUIDA
+  ENTREGUE
+  CANCELADA
+}
+
+/// Perfis de usuario do sistema
+/// TECNICO: Executa servicos, registra eventos
+/// RECEPCIONISTA: Abre OS, cadastra clientes/equipamentos
+/// PROPRIETARIO: Acesso total ao sistema
+/// GESTOR: Relatorios, gestao de catalogo
+enum PerfilUsuario {
+  TECNICO
+  RECEPCIONISTA
+  PROPRIETARIO
+  GESTOR
+}
+
+/// Tipo de item em uma OS (polimorfismo)
+enum TipoItem {
+  SERVICO
+  PECA
+}
+
+/// Tipo de desconto aplicado a uma OS
+enum TipoDesconto {
+  ABSOLUTO
+  PERCENTUAL
+}
+
+/// Tipo de atendimento
+/// INTERNO: Atendimento realizado a partir da assistência (bancada ou remoto)
+/// EXTERNO: Visita tecnica presencial no local do cliente
+enum TipoAtendimento {
+  INTERNO
+  EXTERNO
+}
+
+/// Formas de pagamento aceitas
+enum FormaPagamento {
+  PIX
+  ESPECIE
+  DEBITO
+  CREDITO
+}
+
+/// Niveis de log do sistema
+enum NivelLog {
+  INFO
+  WARN
+  ERROR
+}
+
+/// Categorias de log do sistema
+enum CategoriaLog {
+  AUTH
+  CLIENTE
+  OS
+  BACKUP
+  SISTEMA
+  RESTAURACAO
+}
+
+/// Status de uma solicitacao recebida por e-mail
+enum StatusEmail {
+  NAO_CADASTRADO
+  AGUARDANDO_ATENDIMENTO
+  CONVERTIDO
+  REJEITADO
+}
+
+// =============================================================================
+// MODELOS
+// =============================================================================
+
+/// Cliente - Dados cadastrais de clientes
+/// Regras: CPF unico, soft delete (ativo=0), nunca excluir
+model Cliente {
+  id           Int      @id @default(autoincrement())
+  nome         String
+  cpf          String   @unique
+  rg           String?
+  telefone     String?
+  whatsapp     String?
+  email        String?
+  endereco     String?
+  observacoes  String?
+  dataCadastro DateTime @default(now())
+  ativo        Boolean  @default(true)
+
+  // Relacionamentos
+  equipamentos     Equipamento[]
+  ordensServico    OrdemServico[]
+  contatos         ClienteContato[]
+  solicitacoesEmail EmailSolicitacao[]
+
+  @@index([nome])
+  @@map("cliente")
+}
+
+/// ClienteContato - Contatos do cliente que podem abrir solicitacoes por e-mail
+/// Cada cliente pode ter N contatos, cada um com seu proprio e-mail
+model ClienteContato {
+  id        Int      @id @default(autoincrement())
+  clienteId Int
+  nome      String
+  email     String   @unique
+  telefone  String?
+  ativo     Boolean  @default(true)
+
+  cliente Cliente @relation(fields: [clienteId], references: [id])
+  solicitacoes EmailSolicitacao[]
+
+  @@index([email])
+  @@index([clienteId])
+  @@map("cliente_contato")
+}
+
+/// Equipamento - Equipamentos sob manutencao
+/// Regras: etiqueta unica [A-Z0-9]{5}, imutavel, soft delete
+model Equipamento {
+  id           Int      @id @default(autoincrement())
+  clienteId    Int
+  etiqueta     String   @unique
+  tipo         String
+  marca        String
+  modelo       String
+  numeroSerie  String?
+  observacoes  String?
+  dataCadastro DateTime @default(now())
+  ativo        Boolean  @default(true)
+
+  // Relacionamentos
+  cliente       Cliente        @relation(fields: [clienteId], references: [id])
+  ordensServico OrdemServico[]
+
+  @@index([clienteId])
+  @@index([tipo])
+  @@map("equipamento")
+}
+
+/// OrdemServico - Ciclo de vida do servico prestado
+/// Regras: numeroOS unico e sequencial, nunca reinicia
+model OrdemServico {
+  id              Int              @id @default(autoincrement())
+  numeroOS        String           @unique
+  clienteId       Int
+  equipamentoId   Int?
+  tipoAtendimento TipoAtendimento  @default(INTERNO)
+  status          StatusOS         @default(ABERTA)
+  dataEntrada     DateTime         @default(now())
+  dataPrevisao    DateTime?
+  dataConclusao   DateTime?
+  observacoes     String?
+  desconto        Float?
+  descontoTipo    TipoDesconto?
+  formaPagamento  FormaPagamento?
+
+  // Relacionamentos
+  cliente     Cliente      @relation(fields: [clienteId], references: [id])
+  equipamento Equipamento? @relation(fields: [equipamentoId], references: [id])
+  eventos     EventoOS[]
+  itens       ItemOS[]
+  inventarios Inventario[]
+  emailSolicitacao EmailSolicitacao[]
+
+  @@index([clienteId])
+  @@index([equipamentoId])
+  @@index([status])
+  @@index([dataEntrada])
+  @@map("ordem_servico")
+}
+
+/// EventoOS - Log imutavel de eventos de uma OS
+/// Regras: NUNCA UPDATE/DELETE, apenas CREATE (event sourcing)
+model EventoOS {
+  id        Int      @id @default(autoincrement())
+  osId      Int
+  usuarioId Int
+  dataHora  DateTime @default(now())
+  descricao String
+
+  // Relacionamentos
+  os      OrdemServico @relation(fields: [osId], references: [id], onDelete: Cascade)
+  usuario Usuario      @relation(fields: [usuarioId], references: [id])
+
+  @@index([osId])
+  @@index([usuarioId])
+  @@index([dataHora])
+  @@map("evento_os")
+}
+
+/// Servico - Catalogo de servicos disponiveis
+/// Regras: soft delete, valor nao negativo, historico preservado
+model Servico {
+  id          Int     @id @default(autoincrement())
+  descricao   String
+  valorPadrao Float   @default(0)
+  ativo       Boolean @default(true)
+
+  @@index([descricao])
+  @@map("servico")
+}
+
+/// Peca - Catalogo de pecas disponiveis
+/// Regras: soft delete, valor nao negativo, historico preservado
+model Peca {
+  id              Int     @id @default(autoincrement())
+  descricao       String
+  fabricante      String?
+  valorReferencia Float   @default(0)
+  ativo           Boolean @default(true)
+
+  @@index([descricao])
+  @@map("peca")
+}
+
+/// ItemOS - Itens de uma OS (servicos ou pecas)
+/// Polimorfismo: tipoItem + referenciaId
+/// Regras: valor congelado no momento da adicao, calculo automatico
+model ItemOS {
+  id            Int      @id @default(autoincrement())
+  osId          Int
+  tipoItem      TipoItem
+  referenciaId  Int
+  descricao     String
+  quantidade    Float
+  valorUnitario Float
+  valorTotal    Float
+
+  // Relacionamentos
+  os OrdemServico @relation(fields: [osId], references: [id], onDelete: Cascade)
+
+  @@index([osId])
+  @@index([tipoItem, referenciaId])
+  @@map("item_os")
+}
+
+/// Inventario - Snapshot de hardware de uma OS
+/// Regras: 1:N com OS, registros imutaveis, ordenados por data
+model Inventario {
+  id           Int      @id @default(autoincrement())
+  osId         Int
+  tipo         String   @default("MANUAL")
+  dataCaptura  DateTime @default(now())
+  jsonCompleto String
+
+  // Relacionamentos (1:N com OrdemServico)
+  os OrdemServico @relation(fields: [osId], references: [id], onDelete: Cascade)
+
+  @@index([osId])
+  @@index([dataCaptura])
+  @@map("inventario")
+}
+
+/// Usuario - Usuarios do sistema
+/// Regras: login unico, senha hash bcrypt, unico PROPRIETARIO
+model Usuario {
+  id        Int           @id @default(autoincrement())
+  nome      String
+  login     String        @unique
+  senhaHash String
+  perfil    PerfilUsuario
+  ativo     Boolean       @default(true)
+
+  // Relacionamentos
+  eventos             EventoOS[]
+  logs                Log[]
+  solicitacoesAprovadas EmailSolicitacao[]
+
+  @@index([perfil])
+  @@map("usuario")
+}
+
+/// Log - Log de auditoria do sistema
+/// Regras: registra todas as acoes relevantes, rastreavel
+model Log {
+  id            Int          @id @default(autoincrement())
+  dataHora      DateTime     @default(now())
+  nivel         NivelLog
+  categoria     CategoriaLog
+  acao          String
+  descricao     String
+  usuarioId     Int?
+  dadosContexto String?
+  maquinaId     String?
+  versaoApp     String?
+
+  // Relacionamentos
+  usuario Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@index([dataHora])
+  @@index([nivel])
+  @@index([categoria])
+  @@index([usuarioId])
+  @@map("log")
+}
+
+/// EmailSolicitacao - Solicitacoes recebidas por e-mail que podem se tornar OS
+/// Fluxo: NAO_CADASTRADO -> (vinculo manual) -> AGUARDANDO_ATENDIMENTO -> (conversao) -> CONVERTIDO
+///        Qualquer estado pode ir para REJEITADO
+/// Configuracao - Armazenamento chave-valor para configuracoes do sistema
+model Configuracao {
+  chave String @id
+  valor String
+
+  @@map("configuracao")
+}
+
+model EmailSolicitacao {
+  id              Int         @id @default(autoincrement())
+  emailRemetente  String
+  assunto         String
+  corpoTexto      String
+  dataRecebimento DateTime    @default(now())
+  mensagemId      String      @unique
+  status          StatusEmail
+  clienteId       Int?
+  contatoId       Int?
+  osId            Int?
+  usuarioAprovadorId Int?
+  dataProcessamento DateTime?
+  observacoes     String?
+
+  cliente         Cliente?         @relation(fields: [clienteId], references: [id])
+  contato         ClienteContato?  @relation(fields: [contatoId], references: [id])
+  os              OrdemServico?    @relation(fields: [osId], references: [id])
+  usuarioAprovador Usuario?        @relation(fields: [usuarioAprovadorId], references: [id])
+
+  @@index([status])
+  @@index([emailRemetente])
+  @@index([dataRecebimento])
+  @@map("email_solicitacao")
+}

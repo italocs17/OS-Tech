@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+
+# Electron binaries (download via script)
+electron/
+electron-builder.yml
+
+# Build output
+release/
+dist/
+out/
+
+# Database
+prisma/*.db
+prisma/*.db-journal
+prisma/migrations/**/migration_lock.toml
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Prisma
+prisma/generated/
+src/main/database/generated/
+
+# PDFs gerados
+prisma/pdfs/
+pdfs/
+
+# Backups
+prisma/backups/
+backups/
+
+# Large archives
+*.zip
+
+# Electron-builder
+release/
