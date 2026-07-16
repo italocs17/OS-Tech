@@ -3,9 +3,14 @@
  * Regras de negocio para a entidade Cliente.
  */
 
+import { prisma } from '../database/connection';
 import { ClienteRepository } from '../database/repositories/client.repository';
 import { createClientSchema, updateClientSchema } from '../validators/client.validator';
 import type { CreateClienteDTO, UpdateClienteDTO } from '@shared/types/entities.types';
+
+interface CreateClienteComContatosDTO extends CreateClienteDTO {
+  contatos?: Array<{ nome: string; email: string; telefone?: string }>;
+}
 
 export class ClienteService {
   private repository = new ClienteRepository();
@@ -20,10 +25,31 @@ export class ClienteService {
     return cliente;
   }
 
-  async create(data: CreateClienteDTO) {
-    const validated = createClientSchema.parse(data);
-    const existing = await this.repository.findByCpf(validated.cpf);
-    if (existing) throw new Error('CPF ja cadastrado');
+  async create(data: CreateClienteComContatosDTO) {
+    const { contatos, ...clienteData } = data;
+    const validated = createClientSchema.parse(clienteData);
+    const existing = await this.repository.findByCpfCnpj(validated.cpfCnpj);
+    if (existing) throw new Error('CPF/CNPJ ja cadastrado');
+
+    if (contatos && contatos.length > 0) {
+      return prisma.$transaction(async (tx: any) => {
+        const cliente = await tx.cliente.create({ data: validated });
+        for (const contato of contatos) {
+          if (contato.nome?.trim() && contato.email?.trim()) {
+            await tx.clienteContato.create({
+              data: {
+                clienteId: cliente.id,
+                nome: contato.nome.trim(),
+                email: contato.email.trim().toLowerCase(),
+                telefone: contato.telefone?.trim() || null,
+              },
+            });
+          }
+        }
+        return cliente;
+      });
+    }
+
     return this.repository.create(validated);
   }
 

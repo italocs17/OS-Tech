@@ -6,7 +6,7 @@ import { LoadingSpinner } from '../../components/shared/loading-spinner';
 import { Modal } from '../../components/shared/modal';
 import { FormField } from '../../components/shared/form-field';
 import { SearchInput } from '../../components/shared/search-input';
-import type { Usuario, PerfilUsuario } from '@shared/types/entities.types';
+import type { Usuario, PerfilUsuario, Equipe } from '@shared/types/entities.types';
 
 const PERFIS: PerfilUsuario[] = ['TECNICO', 'RECEPCIONISTA', 'PROPRIETARIO', 'GESTOR'];
 
@@ -153,12 +153,53 @@ function UserFormModal({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const { data: equipesData } = useQuery({
+    queryKey: ['equipes'],
+    queryFn: () => window.osTech.equipe.list(),
+    enabled: open,
+  });
+
+  const equipesList = useMemo(
+    () => (Array.isArray(equipesData) ? (equipesData as Equipe[]) : []),
+    [equipesData]
+  );
+
+  const { data: equipesDoUsuario } = useQuery({
+    queryKey: ['equipes-by-usuario', user?.id],
+    queryFn: () => window.osTech.equipe.getByUsuario(user!.id),
+    enabled: open && isEditing && !!user,
+  });
+
+  const equipesUsuarioIds = useMemo(() => {
+    if (!equipesDoUsuario || !Array.isArray(equipesDoUsuario)) return [];
+    return (equipesDoUsuario as any[]).map((eu: any) => eu.equipeId);
+  }, [equipesDoUsuario]);
+
+  const [selectedEquipes, setSelectedEquipes] = useState<number[]>([]);
+
+  useState(() => {
+    if (isEditing && equipesUsuarioIds.length > 0) {
+      setSelectedEquipes(equipesUsuarioIds);
+    }
+  });
+
   const mutation = useMutation({
     mutationFn: async () => {
       if (isEditing) {
         const payload: any = { nome: form.nome, perfil: form.perfil };
         if (form.senha) payload.senha = form.senha;
-        return window.osTech.user.update(user.id, payload);
+        const result = await window.osTech.user.update(user.id, payload);
+        for (const equipeId of selectedEquipes) {
+          if (!equipesUsuarioIds.includes(equipeId)) {
+            await window.osTech.equipe.addUsuario(equipeId, user.id);
+          }
+        }
+        for (const equipeId of equipesUsuarioIds) {
+          if (!selectedEquipes.includes(equipeId)) {
+            await window.osTech.equipe.removeUsuario(equipeId, user.id);
+          }
+        }
+        return result;
       }
       return window.osTech.user.create({
         nome: form.nome,
@@ -196,6 +237,12 @@ function UserFormModal({
 
   const set = (field: string, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }));
+
+  const toggleEquipe = (id: number) => {
+    setSelectedEquipes((prev) =>
+      prev.includes(id) ? prev.filter((e) => e !== id) : [...prev, id]
+    );
+  };
 
   return (
     <Modal
@@ -249,6 +296,27 @@ function UserFormModal({
             ))}
           </select>
         </FormField>
+
+        {isEditing && equipesList.length > 0 && (
+          <FormField label="Equipes">
+            <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border p-2">
+              {equipesList.map((eq) => (
+                <label
+                  key={eq.id}
+                  className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-accent"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedEquipes.includes(eq.id)}
+                    onChange={() => toggleEquipe(eq.id)}
+                    className="rounded"
+                  />
+                  {eq.nome}
+                </label>
+              ))}
+            </div>
+          </FormField>
+        )}
 
         {errors.form && (
           <p className="text-sm text-destructive">{errors.form}</p>

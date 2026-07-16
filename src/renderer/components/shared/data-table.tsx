@@ -19,6 +19,8 @@ interface DataTableProps<T> {
   isLoading?: boolean;
   emptyMessage?: string;
   onRowClick?: (item: T) => void;
+  onRowSecondaryAction?: (item: T) => void;
+  secondaryActionLabel?: string;
 }
 
 export function DataTable<T>({
@@ -28,6 +30,8 @@ export function DataTable<T>({
   isLoading,
   emptyMessage = 'Nenhum registro encontrado',
   onRowClick,
+  onRowSecondaryAction,
+  secondaryActionLabel,
 }: DataTableProps<T>) {
   if (isLoading) {
     return (
@@ -78,6 +82,19 @@ export function DataTable<T>({
                     : String((item as Record<string, unknown>)[col.key] ?? '')}
                 </td>
               ))}
+              {onRowSecondaryAction && (
+                <td className="px-4 py-3 text-sm">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRowSecondaryAction(item);
+                    }}
+                    className="rounded border px-2 py-1 text-xs font-medium hover:bg-accent"
+                  >
+                    {secondaryActionLabel ?? 'Acao'}
+                  </button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

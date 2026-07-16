@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Modal } from '../../../components/shared/modal';
+import { ClientForm } from '../../../components/forms/client-form';
 import { useAuth } from '@/lib/auth-context';
 
 interface ClientOption {
   id: number;
   nome: string;
-  cpf: string;
+  cpfCnpj: string;
   contatos?: { id: number; nome: string; email: string }[];
 }
 
@@ -23,6 +24,7 @@ export function LinkClientModal({ solicitacaoId, open, onClose }: LinkClientModa
   const [selectedContatoId, setSelectedContatoId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState('');
+  const [showNewClientForm, setShowNewClientForm] = useState(false);
 
   const { data: clients, isLoading } = useQuery({
     queryKey: ['clients'],
@@ -51,7 +53,7 @@ export function LinkClientModal({ solicitacaoId, open, onClose }: LinkClientModa
   const filteredClients = Array.isArray(clients)
     ? clients.filter((c: ClientOption) =>
         c.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.cpf.includes(searchQuery)
+        c.cpfCnpj.includes(searchQuery)
       )
     : [];
 
@@ -66,18 +68,46 @@ export function LinkClientModal({ solicitacaoId, open, onClose }: LinkClientModa
     });
   };
 
+  const handleNewClientSuccess = (cliente: any) => {
+    queryClient.invalidateQueries({ queryKey: ['clients'] });
+    setShowNewClientForm(false);
+    setSelectedClientId(cliente.id);
+  };
+
+  if (showNewClientForm) {
+    return (
+      <Modal open={open} title="Novo Cliente" onClose={onClose} size="lg">
+        <ClientForm
+          onClose={() => setShowNewClientForm(false)}
+          onSuccess={handleNewClientSuccess}
+          showContatos={true}
+        />
+      </Modal>
+    );
+  }
+
   return (
     <Modal open={open} title="Vincular Cliente" onClose={onClose} size="lg">
       <div className="space-y-4">
-        <div>
-          <label className="text-xs font-medium text-muted-foreground">Buscar Cliente</label>
-          <input
-            type="text"
-            className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            placeholder="Digite nome ou CPF..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <label className="text-xs font-medium text-muted-foreground">Buscar Cliente</label>
+            <input
+              type="text"
+              className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+              placeholder="Digite nome ou CPF/CNPJ..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <div className="flex items-end">
+            <button
+              onClick={() => setShowNewClientForm(true)}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              + Novo Cliente
+            </button>
+          </div>
         </div>
 
         <div className="max-h-40 overflow-y-auto rounded-lg border">
@@ -97,7 +127,7 @@ export function LinkClientModal({ solicitacaoId, open, onClose }: LinkClientModa
                   setSelectedContatoId(null);
                 }}
               >
-                {client.nome} — {client.cpf}
+                {client.nome} — {client.cpfCnpj}
               </button>
             ))
           )}

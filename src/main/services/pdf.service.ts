@@ -113,7 +113,7 @@ export class PDFService {
     doc.moveDown(0.3);
     doc.fontSize(11);
     doc.text(`Nome: ${os.cliente?.nome || '-'}`);
-    doc.text(`CPF: ${os.cliente?.cpf || '-'}`);
+    doc.text(`CPF/CNPJ: ${os.cliente?.cpfCnpj || '-'}`);
     doc.text(`Telefone: ${os.cliente?.telefone || '-'}`);
     doc.text(`E-mail: ${os.cliente?.email || '-'}`);
     doc.moveDown(0.5);
@@ -258,7 +258,7 @@ export class PDFService {
     doc.moveDown(0.5);
     doc.fontSize(11);
     doc.text(`Nome: ${os.cliente.nome}`);
-    doc.text(`CPF: ${os.cliente.cpf}`);
+    doc.text(`CPF/CNPJ: ${os.cliente.cpfCnpj}`);
     doc.text(`Telefone: ${os.cliente.telefone || '-'}`);
     doc.text(`E-mail: ${os.cliente.email || '-'}`);
     doc.text(`Endereco: ${os.cliente.endereco || '-'}`);
@@ -374,7 +374,7 @@ export class PDFService {
     doc.moveDown(0.5);
     doc.fontSize(11);
     doc.text(`Nome: ${os.cliente.nome}`);
-    doc.text(`CPF: ${os.cliente.cpf}`);
+    doc.text(`CPF/CNPJ: ${os.cliente.cpfCnpj}`);
     doc.moveDown(1);
 
     doc.fontSize(14).text('EQUIPAMENTO', { underline: true });
@@ -632,7 +632,7 @@ export class PDFService {
     doc.moveDown(0.5);
     doc.fontSize(11);
     doc.text(`Nome: ${os.cliente.nome}`);
-    doc.text(`CPF: ${os.cliente.cpf}`);
+    doc.text(`CPF/CNPJ: ${os.cliente.cpfCnpj}`);
     doc.moveDown(1);
 
     doc.fontSize(14).text('EQUIPAMENTO', { underline: true });
@@ -852,7 +852,7 @@ export class PDFService {
     doc.moveDown(0.5);
     doc.fontSize(11);
     doc.text(`Nome: ${cliente.nome}`);
-    doc.text(`CPF: ${cliente.cpf}`);
+    doc.text(`CPF/CNPJ: ${cliente.cpfCnpj}`);
     doc.text(`Telefone: ${cliente.telefone || '-'}`);
     doc.text(`E-mail: ${cliente.email || '-'}`);
 
@@ -922,7 +922,7 @@ export class PDFService {
     doc.text(`N Serie: ${equipamento.numeroSerie || '-'}`);
     doc.moveDown(0.5);
     doc.text(`Cliente: ${equipamento.cliente?.nome || '-'}`);
-    doc.text(`CPF: ${equipamento.cliente?.cpf || '-'}`);
+    doc.text(`CPF/CNPJ: ${equipamento.cliente?.cpfCnpj || '-'}`);
 
     if (dataInicio && dataFim) {
       doc.moveDown(0.5);
@@ -1254,7 +1254,7 @@ export class PDFService {
         doc.fontSize(11);
         sorted.forEach((g, i) => {
           const label = g.cliente?.nome || 'Desconhecido';
-          const cpf = g.cliente?.cpf || '-';
+          const cpf = g.cliente?.cpfCnpj || '-';
           doc.text(
             `${i + 1}. ${label} (${cpf}) - ${g.osList.length} OS - R$ ${this.formatBRL(g.total)}`
           );
@@ -1264,7 +1264,7 @@ export class PDFService {
           const label = g.cliente?.nome || 'Desconhecido';
           doc.fontSize(12).text(`Cliente: ${label}`, { underline: true });
           doc.fontSize(11);
-          doc.text(`  CPF: ${g.cliente?.cpf || '-'}`);
+          doc.text(`  CPF/CNPJ: ${g.cliente?.cpfCnpj || '-'}`);
           doc.text(`  Total de OS: ${g.osList.length}`);
           doc.text(`  Valor total: R$ ${this.formatBRL(g.total)}`);
           doc.moveDown(0.3);

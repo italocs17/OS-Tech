@@ -82,7 +82,7 @@ export function EquipmentForm({ equipment, onClose }: EquipmentFormProps) {
             <option value={0}>Selecione...</option>
             {clientList.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.nome} - {c.cpf}
+                {c.nome} - {c.cpfCnpj}
               </option>
             ))}
           </select>

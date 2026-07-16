@@ -1,6 +1,7 @@
 import { EmailRepository } from '../database/repositories/email.repository';
 import { ClienteContatoRepository } from '../database/repositories/cliente-contato.repository';
 import { EmailConfigService } from './email-config.service';
+import { OSService } from './os.service';
 import { registrar } from './log.service';
 import type { EmailSolicitacaoComVinculos } from '@shared/types/entities.types';
 
@@ -10,12 +11,13 @@ export class EmailService {
   private repository = new EmailRepository();
   private contatoRepository = new ClienteContatoRepository();
   private configService = new EmailConfigService();
+  private osService = new OSService();
 
   private checking = false;
 
-  async checkMail(usuarioId?: number): Promise<{ received: number; novas: number; erros: string[] }> {
+  async checkMail(usuarioId?: number): Promise<{ received: number; novas: number; autoConvertidas: number; erros: string[] }> {
     if (this.checking) {
-      return { received: 0, novas: 0, erros: ['Verificacao ja em andamento'] };
+      return { received: 0, novas: 0, autoConvertidas: 0, erros: ['Verificacao ja em andamento'] };
     }
     this.checking = true;
 
@@ -27,6 +29,7 @@ export class EmailService {
 
     const erros: string[] = [];
     let novas = 0;
+    let autoConvertidas = 0;
     let received = 0;
 
     try {
@@ -85,7 +88,7 @@ export class EmailService {
 
             const contato = await this.contatoRepository.findByEmail(emailRemetente);
 
-            await this.repository.create({
+            const solicitacao = await this.repository.create({
               emailRemetente,
               assunto,
               corpoTexto,
@@ -96,6 +99,15 @@ export class EmailService {
             });
 
             novas++;
+
+            if (contato && solicitacao) {
+              try {
+                await this.autoConvertToOS(solicitacao.id, contato.clienteId);
+                autoConvertidas++;
+              } catch (err: any) {
+                erros.push(`Auto-conversao falhou para email ${emailRemetente}: ${err.message}`);
+              }
+            }
           } catch (err: any) {
             erros.push(`Erro ao processar email UID ${uid}: ${err.message}`);
           }
@@ -112,9 +124,9 @@ export class EmailService {
           nivel: 'INFO',
           categoria: 'SISTEMA',
           acao: 'EMAIL_CHECK',
-          descricao: `Verificacao de email concluida: ${received} nao lidos, ${novas} novos cadastrados`,
+          descricao: `Verificacao de email concluida: ${received} nao lidos, ${novas} novos, ${autoConvertidas} auto-convertidos`,
           usuarioId: uid,
-          dadosContexto: { received, novas, erros: erros.length },
+          dadosContexto: { received, novas, autoConvertidas, erros: erros.length },
         });
       }
     } catch (err: any) {
@@ -135,7 +147,41 @@ export class EmailService {
       this.checking = false;
     }
 
-    return { received, novas, erros };
+    return { received, novas, autoConvertidas, erros };
+  }
+
+  private async autoConvertToOS(solicitacaoId: number, clienteId: number): Promise<void> {
+    const solicitacao = await this.repository.findById(solicitacaoId);
+    if (!solicitacao || solicitacao.status !== 'AGUARDANDO_ATENDIMENTO') return;
+
+    const observacoes = [
+      solicitacao.assunto,
+      '---',
+      solicitacao.corpoTexto,
+    ].join('\n');
+
+    const os = await this.osService.create(
+      {
+        clienteId,
+        tipoAtendimento: 'INTERNO',
+        observacoes,
+      },
+      0
+    );
+
+    await this.repository.update(solicitacaoId, {
+      status: 'CONVERTIDO',
+      osId: os.id,
+      dataProcessamento: new Date(),
+    });
+
+    await registrar({
+      nivel: 'INFO',
+      categoria: 'OS',
+      acao: 'EMAIL_AUTO_CONVERT',
+      descricao: `Solicitacao de email #${solicitacaoId} convertida automaticamente para OS ${os.numeroOS}`,
+      dadosContexto: { solicitacaoId, osId: os.id, numeroOS: os.numeroOS, clienteId },
+    });
   }
 
   private async extrairTexto(client: any, uid: number): Promise<string> {

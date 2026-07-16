@@ -8,6 +8,7 @@ import { EventoOSRepository } from '../database/repositories/evento.repository';
 import { ItemOSRepository } from '../database/repositories/item-os.repository';
 import { proximoNumeroOS } from './numero-os.service';
 import { registrar } from './log.service';
+import { EmailNotificationService } from './email-notification.service';
 import {
   createOSSchema,
   updateOSSchema,
@@ -34,6 +35,7 @@ export class OSService {
   private repository = new OrdemServicoRepository();
   private eventoRepository = new EventoOSRepository();
   private itemRepository = new ItemOSRepository();
+  private notificationService = new EmailNotificationService();
 
   // ===========================================================================
   // CONSULTAS
@@ -86,6 +88,13 @@ export class OSService {
 
     // Criar evento de abertura
     await this.eventoRepository.create({
+      osId: os.id,
+      usuarioId,
+      descricao: `OS ${numeroOS} aberta`,
+    });
+
+    // Notificar cliente por email (fire-and-forget)
+    this.notificationService.notifyEvento(os.id, {
       osId: os.id,
       usuarioId,
       descricao: `OS ${numeroOS} aberta`,
@@ -159,6 +168,19 @@ export class OSService {
       descricao: `Status alterado de ${statusAtual} para ${validated.status}`,
     });
 
+    // Notificar cliente por email (fire-and-forget)
+    const eventoData = {
+      osId: id,
+      usuarioId,
+      descricao: `Status alterado de ${statusAtual} para ${validated.status}`,
+    };
+    this.notificationService.notifyEvento(id, eventoData);
+
+    // Na conclusao/entrega, enviar PDF anexado
+    if (validated.status === 'CONCLUIDA' || validated.status === 'ENTREGUE') {
+      this.notificationService.notifyConclusao(id, validated.status);
+    }
+
     // Registrar log
     await registrar({
       nivel: 'INFO',
@@ -186,7 +208,11 @@ export class OSService {
       );
     }
 
-    return this.eventoRepository.create(validated);
+    return this.eventoRepository.create(validated).then((evento) => {
+      // Notificar cliente por email (fire-and-forget)
+      this.notificationService.notifyEvento(validated.osId, validated);
+      return evento;
+    });
   }
 
   async getEventos(osId: number) {

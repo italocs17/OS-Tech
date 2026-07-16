@@ -41,6 +41,5 @@ describe('OSForm', () => {
     await waitFor(() => expect(screen.getByText('Cliente')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Abrir OS'));
     expect(screen.getByText('Selecione um cliente')).toBeInTheDocument();
-    expect(screen.getByText('Selecione um equipamento')).toBeInTheDocument();
   });
 });

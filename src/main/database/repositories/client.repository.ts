@@ -18,8 +18,8 @@ export class ClienteRepository {
     return prisma.cliente.findUnique({ where: { id } });
   }
 
-  async findByCpf(cpf: string) {
-    return prisma.cliente.findUnique({ where: { cpf } });
+  async findByCpfCnpj(cpfCnpj: string) {
+    return prisma.cliente.findUnique({ where: { cpfCnpj } });
   }
 
   async create(data: CreateClienteDTO) {

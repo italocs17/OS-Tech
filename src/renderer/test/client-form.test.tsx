@@ -27,22 +27,22 @@ describe('ClientForm', () => {
   it('renderiza campos obrigatorios', () => {
     render(<ClientForm onClose={vi.fn()} />, { wrapper: createWrapper() });
     expect(screen.getByText('Nome')).toBeInTheDocument();
-    expect(screen.getByText('CPF')).toBeInTheDocument();
+    expect(screen.getByText('CPF/CNPJ')).toBeInTheDocument();
     expect(screen.getByText('RG')).toBeInTheDocument();
-    expect(screen.getByText('Telefone')).toBeInTheDocument();
+    expect(screen.getAllByText('Telefone').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('E-mail')).toBeInTheDocument();
   });
 
   it('mostra erros de validacao ao submeter vazio', () => {
     render(<ClientForm onClose={vi.fn()} />, { wrapper: createWrapper() });
     fireEvent.click(screen.getByText('Cadastrar'));
-    expect(screen.getByText('Nome é obrigatório')).toBeInTheDocument();
-    expect(screen.getByText('CPF é obrigatório')).toBeInTheDocument();
+    expect(screen.getByText('Nome e obrigatorio')).toBeInTheDocument();
+    expect(screen.getByText('CPF/CNPJ e obrigatorio')).toBeInTheDocument();
   });
 
   it('renderiza dados do cliente no modo edicao', () => {
     const client = {
-      id: 1, nome: 'João', cpf: '529.982.247-25',
+      id: 1, nome: 'João', cpfCnpj: '529.982.247-25',
       rg: '1234567', telefone: '11912345678',
       email: 'joao@teste.com', endereco: 'Rua A',
       observacoes: 'Obs', dataCadastro: new Date(), ativo: true,

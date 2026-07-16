@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/lib/auth-context';
 import { PageHeader } from '../../components/layout/page-header';
 import { DataTable, type Column } from '../../components/shared/data-table';
 import { StatusBadge } from '../../components/shared/status-badge';
@@ -24,6 +25,7 @@ export function OSPage() {
   const navigate = useNavigate();
   const [modalOpen, setModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const { user, isProprietario, isGestor, getCategoriasIds } = useAuth();
 
   const { data: osList, isLoading } = useQuery({
     queryKey: ['os-list'],

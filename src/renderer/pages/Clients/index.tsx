@@ -13,7 +13,7 @@ import type { Cliente } from '@shared/types/entities.types';
 interface ClienteRow {
   id: number;
   nome: string;
-  cpf: string;
+  cpfCnpj: string;
   telefone: string | null;
   email: string | null;
   dataCadastro: string | Date;
@@ -32,7 +32,7 @@ export function ClientsPage() {
 
   const columns: Column<ClienteRow>[] = [
     { key: 'nome', header: 'Nome' },
-    { key: 'cpf', header: 'CPF' },
+    { key: 'cpfCnpj', header: 'CPF/CNPJ' },
     { key: 'telefone', header: 'Telefone' },
     { key: 'email', header: 'E-mail' },
     {
@@ -65,7 +65,7 @@ export function ClientsPage() {
     return data.filter(
       (c: ClienteRow) =>
         c.nome.toLowerCase().includes(q) ||
-        c.cpf.toLowerCase().includes(q)
+        c.cpfCnpj.toLowerCase().includes(q)
     );
   }, [data, searchQuery]);
 
@@ -99,7 +99,7 @@ export function ClientsPage() {
         }
       />
       <SearchInput
-        placeholder="Buscar por nome ou CPF..."
+        placeholder="Buscar por nome ou CPF/CNPJ..."
         value={searchQuery}
         onChange={setSearchQuery}
         className="max-w-sm"

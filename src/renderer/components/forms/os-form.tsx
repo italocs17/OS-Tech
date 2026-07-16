@@ -1,8 +1,8 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useMemo, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/auth-context';
 import { FormField } from '../shared/form-field';
-import type { Cliente, Equipamento, TipoAtendimento } from '@shared/types/entities.types';
+import type { Cliente, Equipamento, TipoAtendimento, CategoriaServico, SubcategoriaServico } from '@shared/types/entities.types';
 
 interface OSFormProps {
   onClose: () => void;
@@ -10,7 +10,7 @@ interface OSFormProps {
 
 export function OSForm({ onClose }: OSFormProps) {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, hasAccessToCategoria, getCategoriasIds, isProprietario, isGestor } = useAuth();
 
   const { data: clients } = useQuery({
     queryKey: ['clients'],
@@ -33,6 +33,32 @@ export function OSForm({ onClose }: OSFormProps) {
   });
 
   const equipList = Array.isArray(equipments) ? (equipments as Equipamento[]) : [];
+
+  const isRestricted = !isProprietario && !isGestor;
+  const allowedCategoriaIds = useMemo(() => {
+    if (!isRestricted) return [];
+    return getCategoriasIds();
+  }, [isRestricted, getCategoriasIds]);
+
+  const { data: categoriasData } = useQuery({
+    queryKey: ['categorias-servico'],
+    queryFn: () => window.osTech.categoriaServico.list(),
+  });
+
+  const { data: subcategoriasData } = useQuery({
+    queryKey: ['subcategorias-servico'],
+    queryFn: () => window.osTech.subcategoriaServico.list(),
+  });
+
+  const categoriasList = useMemo(() => {
+    const all = Array.isArray(categoriasData) ? (categoriasData as CategoriaServico[]) : [];
+    if (!isRestricted) return all;
+    return all.filter((c) => allowedCategoriaIds.includes(c.id));
+  }, [categoriasData, isRestricted, allowedCategoriaIds]);
+
+  const subcategoriasList = useMemo(() => {
+    return Array.isArray(subcategoriasData) ? (subcategoriasData as SubcategoriaServico[]) : [];
+  }, [subcategoriasData]);
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -93,7 +119,7 @@ export function OSForm({ onClose }: OSFormProps) {
           <option value={0}>Selecione...</option>
           {clientList.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.nome} - {c.cpf}
+              {c.nome} - {c.cpfCnpj}
             </option>
           ))}
         </select>
@@ -116,6 +142,14 @@ export function OSForm({ onClose }: OSFormProps) {
           ))}
         </select>
       </FormField>
+
+      {isRestricted && categoriasList.length > 0 && (
+        <div className="rounded-lg border bg-muted/30 p-3">
+          <p className="text-xs text-muted-foreground">
+            Categorias da sua equipe: {categoriasList.map((c) => c.nome).join(', ')}
+          </p>
+        </div>
+      )}
 
       <FormField label="Observações">
         <textarea

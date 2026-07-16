@@ -7,8 +7,11 @@ import { inventoryAPI } from './inventory.preload';
 import { backupAPI, reportAPI } from './report.preload';
 import { logAPI } from './log.preload';
 import { servicoAPI } from './servico.preload';
+import { categoriaServicoAPI } from './categoria-servico.preload';
+import { subcategoriaServicoAPI } from './subcategoria-servico.preload';
 import { pecaAPI } from './peca.preload';
 import { emailAPI } from './email.preload';
+import { equipeAPI } from './equipe.preload';
 
 contextBridge.exposeInMainWorld('osTech', {
   client: clientAPI,
@@ -20,6 +23,9 @@ contextBridge.exposeInMainWorld('osTech', {
   report: reportAPI,
   log: logAPI,
   servico: servicoAPI,
+  categoriaServico: categoriaServicoAPI,
+  subcategoriaServico: subcategoriaServicoAPI,
+  equipe: equipeAPI,
   peca: pecaAPI,
   email: emailAPI,
 });

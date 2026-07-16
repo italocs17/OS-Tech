@@ -8,7 +8,7 @@ import { LoadingSpinner } from '../../../components/shared/loading-spinner';
 import { Modal } from '../../../components/shared/modal';
 import { FormField } from '../../../components/shared/form-field';
 import { CurrencyInput } from '../../../components/shared/currency-input';
-import { formatDate, formatDateTime, formatCurrency, formatCPF, formatPhone } from '../../../lib/utils';
+import { formatDate, formatDateTime, formatCurrency, formatCPF_CNPJ, formatPhone } from '../../../lib/utils';
 import { STATUS_OS } from '../../../lib/constants';
 import type {
   OrdemServico, EventoOS, ItemOS, TipoItem,
@@ -26,8 +26,9 @@ export function OSDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, isProprietario, isGestor } = useAuth();
   const osId = Number(id);
+  const isRestricted = !isProprietario && !isGestor;
 
   const [statusModal, setStatusModal] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState('');
@@ -237,8 +238,8 @@ export function OSDetailPage() {
                   <span className="ml-1 font-medium">{(osData as any).cliente?.nome ?? '-'}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">CPF:</span>
-                  <span className="ml-1 font-medium">{(osData as any).cliente?.cpf ? formatCPF((osData as any).cliente.cpf) : '-'}</span>
+                  <span className="text-muted-foreground">CPF/CNPJ:</span>
+                  <span className="ml-1 font-medium">{(osData as any).cliente?.cpfCnpj ? formatCPF_CNPJ((osData as any).cliente.cpfCnpj) : '-'}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Fone:</span>
@@ -284,7 +285,7 @@ export function OSDetailPage() {
                   <span className="text-muted-foreground">Pagamento:</span>
                   <span className="ml-1 font-medium">
                     {osData.formaPagamento ? (
-                      !isDiscountBlocked ? (
+                      !isDiscountBlocked && !isRestricted ? (
                         <select
                           value={osData.formaPagamento}
                           onChange={(e) => paymentMutation.mutate(e.target.value as FormaPagamento)}
@@ -299,7 +300,7 @@ export function OSDetailPage() {
                         FORMAS_PAGAMENTO.find((f) => f.value === osData.formaPagamento)?.label ?? osData.formaPagamento
                       )
                     ) : (
-                      !isDiscountBlocked ? (
+                      !isDiscountBlocked && !isRestricted ? (
                         <select
                           value=""
                           onChange={(e) => paymentMutation.mutate(e.target.value as FormaPagamento)}
@@ -485,12 +486,12 @@ export function OSDetailPage() {
             <div className="mt-3 flex gap-2">
               <button
                 onClick={handleOpenDiscount}
-                disabled={isDiscountBlocked}
+                disabled={isDiscountBlocked || isRestricted}
                 className="rounded-lg border px-3 py-1.5 text-xs font-medium hover:bg-accent disabled:opacity-50"
               >
                 {hasDesconto ? 'Editar Desconto' : 'Adicionar Desconto'}
               </button>
-              {hasDesconto && !isDiscountBlocked && (
+              {hasDesconto && !isDiscountBlocked && !isRestricted && (
                 <button
                   onClick={handleRemoveDiscount}
                   className="rounded-lg border border-destructive px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10"

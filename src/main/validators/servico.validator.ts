@@ -6,6 +6,14 @@ export const createServicoSchema = z.object({
     (v) => (v === '' ? undefined : v),
     z.number().min(0, 'Valor nao pode ser negativo').optional()
   ),
+  categoriaId: z.preprocess(
+    (v) => (v === '' || v === null ? undefined : v),
+    z.number().optional()
+  ),
+  subcategoriaId: z.preprocess(
+    (v) => (v === '' || v === null ? undefined : v),
+    z.number().optional()
+  ),
 });
 
 export const updateServicoSchema = createServicoSchema.partial().extend({

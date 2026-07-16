@@ -5,18 +5,27 @@ import { cn } from '../../lib/utils';
 import { APP_VERSION } from '@/lib/constants';
 import { useAuth } from '@/lib/auth-context';
 import { ChangePasswordModal } from '../shared/change-password-modal';
+import type { PerfilUsuario } from '@shared/types/entities.types';
 
-const menuItems = [
+interface MenuItem {
+  to: string;
+  label: string;
+  icon: string;
+  perfis?: PerfilUsuario[];
+}
+
+const menuItems: MenuItem[] = [
   { to: '/', label: 'Dashboard', icon: '📊' },
-  { to: '/clients', label: 'Clientes', icon: '👥' },
-  { to: '/equipment', label: 'Equipamentos', icon: '🖥️' },
+  { to: '/clients', label: 'Clientes', icon: '👥', perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'] },
+  { to: '/equipment', label: 'Equipamentos', icon: '🖥️', perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'] },
   { to: '/os', label: 'Ordens de Serviço', icon: '📋' },
   { to: '/catalog', label: 'Catálogo', icon: '📦' },
-  { to: '/users', label: 'Usuários', icon: '🔐' },
-  { to: '/reports', label: 'Relatórios', icon: '📈' },
-  { to: '/backup', label: 'Backup', icon: '💾' },
-  { to: '/email-inbox', label: 'Chamados', icon: '💬' },
-  { to: '/logs', label: 'Auditoria', icon: '📝' },
+  { to: '/users', label: 'Usuários', icon: '🔐', perfis: ['PROPRIETARIO', 'GESTOR'] },
+  { to: '/equipes', label: 'Equipes', icon: '🏢', perfis: ['PROPRIETARIO', 'GESTOR'] },
+  { to: '/reports', label: 'Relatórios', icon: '📈', perfis: ['PROPRIETARIO', 'GESTOR'] },
+  { to: '/backup', label: 'Backup', icon: '💾', perfis: ['PROPRIETARIO'] },
+  { to: '/email-inbox', label: 'Chamados', icon: '💬', perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'] },
+  { to: '/logs', label: 'Auditoria', icon: '📝', perfis: ['PROPRIETARIO', 'GESTOR'] },
 ];
 
 export function Sidebar() {
@@ -29,6 +38,11 @@ export function Sidebar() {
     refetchInterval: 60000,
   });
 
+  const visibleItems = menuItems.filter((item) => {
+    if (!item.perfis || !user) return true;
+    return item.perfis.includes(user.perfil);
+  });
+
   return (
     <aside className="flex h-full w-64 flex-col border-r bg-card">
       <div className="flex h-16 items-center gap-2 border-b px-6">
@@ -36,7 +50,7 @@ export function Sidebar() {
         <h1 className="text-lg font-bold">OS.Tech</h1>
       </div>
       <nav className="flex-1 space-y-1 p-4">
-        {menuItems.map((item) => (
+        {visibleItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

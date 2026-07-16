@@ -431,7 +431,7 @@ export function ReportsPage() {
               <option value={0}>Selecione...</option>
               {(clientData as any[]).map((c: any) => (
                 <option key={c.id} value={c.id}>
-                  {c.nome} - {c.cpf}
+                  {c.nome} - {c.cpfCnpj}
                 </option>
               ))}
             </select>

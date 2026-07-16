@@ -10,7 +10,7 @@
 export interface Cliente {
   id: number;
   nome: string;
-  cpf: string;
+  cpfCnpj: string;
   rg: string | null;
   telefone: string | null;
   whatsapp: string | null;
@@ -23,7 +23,7 @@ export interface Cliente {
 
 export interface CreateClienteDTO {
   nome: string;
-  cpf: string;
+  cpfCnpj: string;
   rg?: string;
   telefone?: string;
   whatsapp?: string;
@@ -158,17 +158,112 @@ export interface Servico {
   descricao: string;
   valorPadrao: number;
   ativo: boolean;
+  categoriaId: number | null;
+  subcategoriaId: number | null;
+  categoria?: CategoriaServico | null;
+  subcategoria?: SubcategoriaServico | null;
 }
 
 export interface CreateServicoDTO {
   descricao: string;
   valorPadrao?: number;
+  categoriaId?: number | null;
+  subcategoriaId?: number | null;
 }
 
 export interface UpdateServicoDTO {
   descricao?: string;
   valorPadrao?: number;
   ativo?: boolean;
+  categoriaId?: number | null;
+  subcategoriaId?: number | null;
+}
+
+// =============================================================================
+// CATEGORIA SERVICO
+// =============================================================================
+
+export interface CategoriaServico {
+  id: number;
+  nome: string;
+  descricao: string | null;
+  ativo: boolean;
+}
+
+export interface CreateCategoriaServicoDTO {
+  nome: string;
+  descricao?: string;
+}
+
+export interface UpdateCategoriaServicoDTO {
+  nome?: string;
+  descricao?: string;
+  ativo?: boolean;
+}
+
+// =============================================================================
+// SUBCATEGORIA SERVICO
+// =============================================================================
+
+export interface SubcategoriaServico {
+  id: number;
+  nome: string;
+  descricao: string | null;
+  ativo: boolean;
+  categoriaId: number;
+  categoria?: CategoriaServico;
+}
+
+export interface CreateSubcategoriaServicoDTO {
+  nome: string;
+  descricao?: string;
+  categoriaId: number;
+}
+
+export interface UpdateSubcategoriaServicoDTO {
+  nome?: string;
+  descricao?: string;
+  ativo?: boolean;
+  categoriaId?: number;
+}
+
+// =============================================================================
+// EQUIPE
+// =============================================================================
+
+export interface Equipe {
+  id: number;
+  nome: string;
+  descricao: string | null;
+  ativo: boolean;
+}
+
+export interface EquipeCategoria {
+  id: number;
+  equipeId: number;
+  categoriaId: number;
+  categoria?: CategoriaServico;
+}
+
+export interface UsuarioEquipe {
+  id: number;
+  usuarioId: number;
+  equipeId: number;
+  usuario?: Usuario;
+  equipe?: Equipe;
+}
+
+export interface CreateEquipeDTO {
+  nome: string;
+  descricao?: string;
+  categoriaIds?: number[];
+}
+
+export interface UpdateEquipeDTO {
+  nome?: string;
+  descricao?: string;
+  ativo?: boolean;
+  categoriaIds?: number[];
 }
 
 // =============================================================================

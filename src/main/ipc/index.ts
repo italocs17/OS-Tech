@@ -12,8 +12,11 @@ import { registerBackupIpcHandlers } from './backup.ipc';
 import { registerReportIpcHandlers } from './report.ipc';
 import { registerLogIpcHandlers } from './log.ipc';
 import { registerServicoIpcHandlers } from './servico.ipc';
+import { registerCategoriaServicoIpcHandlers } from './categoria-servico.ipc';
+import { registerSubcategoriaServicoIpcHandlers } from './subcategoria-servico.ipc';
 import { registerPecaIpcHandlers } from './peca.ipc';
 import { registerEmailIpcHandlers } from './email.ipc';
+import { registerEquipeIpcHandlers } from './equipe.ipc';
 
 export function registerAllIpcHandlers() {
   registerClientIpcHandlers();
@@ -25,6 +28,9 @@ export function registerAllIpcHandlers() {
   registerReportIpcHandlers();
   registerLogIpcHandlers();
   registerServicoIpcHandlers();
+  registerCategoriaServicoIpcHandlers();
+  registerSubcategoriaServicoIpcHandlers();
   registerPecaIpcHandlers();
   registerEmailIpcHandlers();
+  registerEquipeIpcHandlers();
 }

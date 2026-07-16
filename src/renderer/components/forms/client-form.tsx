@@ -1,21 +1,29 @@
 import { useState, type FormEvent } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { FormField } from '../shared/form-field';
-import { formatCPF, formatPhone, toUpper } from '../../lib/utils';
+import { formatCPF_CNPJ, formatPhone, toUpper } from '../../lib/utils';
 import type { Cliente, CreateClienteDTO, UpdateClienteDTO } from '@shared/types/entities.types';
+
+interface ContatoForm {
+  nome: string;
+  email: string;
+  telefone: string;
+}
 
 interface ClientFormProps {
   client?: Cliente;
   onClose: () => void;
+  onSuccess?: (cliente: any) => void;
+  showContatos?: boolean;
 }
 
-export function ClientForm({ client, onClose }: ClientFormProps) {
+export function ClientForm({ client, onClose, onSuccess, showContatos = true }: ClientFormProps) {
   const queryClient = useQueryClient();
   const isEditing = !!client;
 
   const [form, setForm] = useState<CreateClienteDTO>({
     nome: client?.nome ?? '',
-    cpf: client?.cpf ?? '',
+    cpfCnpj: client?.cpfCnpj ?? '',
     rg: client?.rg ?? undefined,
     telefone: client?.telefone ?? undefined,
     whatsapp: client?.whatsapp ?? undefined,
@@ -24,18 +32,32 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
     observacoes: client?.observacoes ?? undefined,
   });
 
+  const [contatos, setContatos] = useState<ContatoForm[]>([
+    { nome: '', email: '', telefone: '' },
+  ]);
+
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const mutation = useMutation({
     mutationFn: async () => {
+      const contatosValidos = contatos.filter((c) => c.nome.trim() && c.email.trim());
+      const dadosComContatos = {
+        ...form,
+        ...(showContatos && contatosValidos.length > 0 ? { contatos: contatosValidos } : {}),
+      };
+
       if (isEditing) {
-        return window.osTech.client.update(client.id, form as UpdateClienteDTO);
+        return window.osTech.client.update(client.id, dadosComContatos as UpdateClienteDTO);
       }
-      return window.osTech.client.create(form);
+      return window.osTech.client.create(dadosComContatos);
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
-      onClose();
+      if (onSuccess) {
+        onSuccess(result);
+      } else {
+        onClose();
+      }
     },
     onError: (err: Error) => {
       setErrors({ form: err.message });
@@ -47,8 +69,16 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
     setErrors({});
 
     const newErrors: Record<string, string> = {};
-    if (!form.nome.trim()) newErrors.nome = 'Nome é obrigatório';
-    if (!form.cpf.trim()) newErrors.cpf = 'CPF é obrigatório';
+    if (!form.nome.trim()) newErrors.nome = 'Nome e obrigatorio';
+    if (!form.cpfCnpj.trim()) newErrors.cpfCnpj = 'CPF/CNPJ e obrigatorio';
+
+    if (showContatos) {
+      const contatosValidos = contatos.filter((c) => c.nome.trim() || c.email.trim());
+      contatosValidos.forEach((c, i) => {
+        if (!c.nome.trim()) newErrors[`contato_${i}_nome`] = 'Nome e obrigatorio';
+        if (!c.email.trim()) newErrors[`contato_${i}_email`] = 'E-mail e obrigatorio';
+      });
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -60,6 +90,20 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
 
   const set = (field: keyof CreateClienteDTO, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value || undefined }));
+
+  const addContato = () => {
+    setContatos((prev) => [...prev, { nome: '', email: '', telefone: '' }]);
+  };
+
+  const removeContato = (index: number) => {
+    setContatos((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateContato = (index: number, field: keyof ContatoForm, value: string) => {
+    setContatos((prev) =>
+      prev.map((c, i) => (i === index ? { ...c, [field]: value } : c))
+    );
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -73,13 +117,13 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
           />
         </FormField>
 
-        <FormField label="CPF" required error={errors.cpf}>
+        <FormField label="CPF/CNPJ" required error={errors.cpfCnpj}>
           <input
             type="text"
-            value={form.cpf}
-            onChange={(e) => set('cpf', formatCPF(e.target.value))}
+            value={form.cpfCnpj}
+            onChange={(e) => set('cpfCnpj', formatCPF_CNPJ(e.target.value))}
             className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            placeholder="000.000.000-00"
+            placeholder="000.000.000-00 ou XX.XXX.XXX/XXXX-XX"
           />
         </FormField>
 
@@ -122,7 +166,7 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
         </FormField>
       </div>
 
-      <FormField label="Endereço">
+      <FormField label="Endereco">
         <input
           type="text"
           value={form.endereco ?? ''}
@@ -131,7 +175,7 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
         />
       </FormField>
 
-      <FormField label="Observações">
+      <FormField label="Observacoes">
         <textarea
           value={form.observacoes ?? ''}
             onChange={(e) => set('observacoes', toUpper(e.target.value))}
@@ -139,6 +183,73 @@ export function ClientForm({ client, onClose }: ClientFormProps) {
           rows={3}
         />
       </FormField>
+
+      {showContatos && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium">Contatos</h3>
+            <button
+              type="button"
+              onClick={addContato}
+              className="text-xs text-primary hover:underline"
+            >
+              + Adicionar Contato
+            </button>
+          </div>
+
+          {contatos.map((contato, index) => (
+            <div key={index} className="flex gap-2 items-start rounded-lg border p-3">
+              <div className="flex-1 grid grid-cols-3 gap-2">
+                <div>
+                  <label className="text-xs text-muted-foreground">Nome *</label>
+                  <input
+                    type="text"
+                    value={contato.nome}
+                    onChange={(e) => updateContato(index, 'nome', toUpper(e.target.value))}
+                    className="w-full rounded border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    placeholder="Nome do contato"
+                  />
+                  {errors[`contato_${index}_nome`] && (
+                    <p className="text-xs text-destructive mt-1">{errors[`contato_${index}_nome`]}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">E-mail *</label>
+                  <input
+                    type="email"
+                    value={contato.email}
+                    onChange={(e) => updateContato(index, 'email', e.target.value.toLowerCase())}
+                    className="w-full rounded border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    placeholder="email@exemplo.com"
+                  />
+                  {errors[`contato_${index}_email`] && (
+                    <p className="text-xs text-destructive mt-1">{errors[`contato_${index}_email`]}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Telefone</label>
+                  <input
+                    type="text"
+                    value={contato.telefone}
+                    onChange={(e) => updateContato(index, 'telefone', formatPhone(e.target.value))}
+                    className="w-full rounded border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    placeholder="(11) 1234-5678"
+                  />
+                </div>
+              </div>
+              {contatos.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeContato(index)}
+                  className="mt-4 text-destructive hover:text-destructive/80 text-sm"
+                >
+                  Remover
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {errors.form && (
         <p className="text-sm text-destructive">{errors.form}</p>

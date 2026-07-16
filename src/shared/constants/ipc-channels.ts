@@ -72,6 +72,21 @@ export const IPC_CHANNELS = {
     UPDATE: 'servico:update',
     DELETE: 'servico:delete',
   },
+  CATEGORIA_SERVICO: {
+    LIST: 'categoria-servico:list',
+    GET: 'categoria-servico:get',
+    CREATE: 'categoria-servico:create',
+    UPDATE: 'categoria-servico:update',
+    DELETE: 'categoria-servico:delete',
+  },
+  SUBCATEGORIA_SERVICO: {
+    LIST: 'subcategoria-servico:list',
+    GET: 'subcategoria-servico:get',
+    GET_BY_CATEGORIA: 'subcategoria-servico:get-by-categoria',
+    CREATE: 'subcategoria-servico:create',
+    UPDATE: 'subcategoria-servico:update',
+    DELETE: 'subcategoria-servico:delete',
+  },
   PECA: {
     LIST: 'peca:list',
     GET: 'peca:get',
@@ -106,6 +121,16 @@ export const IPC_CHANNELS = {
     CLIENTES_RECORRENTES: 'report:clientes-recorrentes',
     FINANCIAL: 'report:financial',
     SAVE_PDF: 'report:save-pdf',
+  },
+  EQUIPE: {
+    LIST: 'equipe:list',
+    GET: 'equipe:get',
+    CREATE: 'equipe:create',
+    UPDATE: 'equipe:update',
+    DELETE: 'equipe:delete',
+    ADD_USUARIO: 'equipe:add-usuario',
+    REMOVE_USUARIO: 'equipe:remove-usuario',
+    GET_BY_USUARIO: 'equipe:get-by-usuario',
   },
 } as const;
 

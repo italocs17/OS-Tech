@@ -109,6 +109,34 @@ export interface ServicoAPI {
   delete: (id: number) => Promise<unknown>;
 }
 
+export interface CategoriaServicoAPI {
+  list: () => Promise<unknown>;
+  get: (id: number) => Promise<unknown>;
+  create: (data: unknown) => Promise<unknown>;
+  update: (id: number, data: unknown) => Promise<unknown>;
+  delete: (id: number) => Promise<unknown>;
+}
+
+export interface SubcategoriaServicoAPI {
+  list: () => Promise<unknown>;
+  get: (id: number) => Promise<unknown>;
+  getByCategoria: (categoriaId: number) => Promise<unknown>;
+  create: (data: unknown) => Promise<unknown>;
+  update: (id: number, data: unknown) => Promise<unknown>;
+  delete: (id: number) => Promise<unknown>;
+}
+
+export interface EquipeAPI {
+  list: () => Promise<unknown>;
+  get: (id: number) => Promise<unknown>;
+  create: (data: unknown) => Promise<unknown>;
+  update: (id: number, data: unknown) => Promise<unknown>;
+  delete: (id: number) => Promise<unknown>;
+  addUsuario: (equipeId: number, usuarioId: number) => Promise<unknown>;
+  removeUsuario: (equipeId: number, usuarioId: number) => Promise<unknown>;
+  getByUsuario: (usuarioId: number) => Promise<unknown>;
+}
+
 export interface PecaAPI {
   list: () => Promise<unknown>;
   get: (id: number) => Promise<unknown>;
@@ -129,6 +157,9 @@ declare global {
       report: ReportAPI;
       log: LogAPI;
       servico: ServicoAPI;
+      categoriaServico: CategoriaServicoAPI;
+      subcategoriaServico: SubcategoriaServicoAPI;
+      equipe: EquipeAPI;
       peca: PecaAPI;
       email: EmailAPI;
     };

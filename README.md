@@ -2,7 +2,7 @@
 
 Sistema desktop (Electron) 100% offline para gestão de assistência técnica de computadores: cadastro de clientes, equipamentos, ordens de serviço com máquina de status, inventário de hardware (manual), geração de PDFs, backup/restore e logs de auditoria.
 
-**Versão atual:** 1.2.1
+**Versão atual:** 2.3.0
 
 ---
 
@@ -18,7 +18,8 @@ Sistema desktop (Electron) 100% offline para gestão de assistência técnica de
 | ORM | Prisma 6 + SQLite (single file, `asar: false` para compatibilidade) |
 | Validação | Zod 4 (main process, camada dupla: schema + regras de negócio) |
 | PDF | PDFKit 0.19 (6 tipos de relatório, A4, margem 50pts) |
-| Testes | Vitest + jsdom + Testing Library (5 suites, 28 testes) |
+| E-mail | Nodemailer 9 + IMAPFlow 1.4 (monitoramento de caixa de entrada) |
+| Testes | Vitest + jsdom + Testing Library |
 | Distribuição | electron-builder 24 (NSIS installer + portable) |
 | Autenticação | `crypto.pbkdf2Sync` (210k iterações, SHA-512, salt 32-byte, hash 64-byte) |
 
@@ -51,38 +52,43 @@ src/
 │   ├── database/
 │   │   ├── connection.ts           # Prisma singleton + auto-seed
 │   │   ├── generated/              # Prisma Client (autogerado)
-│   │   └── repositories/           # 7 repositories (CRUD puro, sem regras)
-│   ├── services/                   # 11 services (regras de negócio)
+│   │   └── repositories/           # 10 repositories (CRUD puro, sem regras)
+│   ├── services/                   # 14 services (regras de negócio)
 │   │   ├── os.service.ts           # FLUXO PRINCIPAL: CRUD + status machine
 │   │   ├── pdf.service.ts          # 6 relatórios PDF
 │   │   ├── backup.service.ts       # Gzip + SHA-256 manifest
 │   │   ├── log.service.ts          # Auditoria com rotação (50k registros)
 │   │   ├── password.service.ts     # PBKDF2 hash/verify
 │   │   ├── inventario.service.ts   # Hardware inventory CRUD
-│   │   ├── inventory-capture.service.ts  # Stub (referência ao PS script)
+│   │   ├── email.service.ts        # IMAP + SMTP (leitura + envio)
+│   │   ├── email-notification.service.ts  # Notificações por e-mail
 │   │   ├── client.service.ts
 │   │   ├── equipment.service.ts
-│   │   ├── etiqueta.service.ts     # Geração de etiqueta única [A-Z0-9]{5}
-│   │   ├── numero-os.service.ts    # Sequencial ANO/MÊS/SEQUENCIAL
-│   │   └── usuario.service.ts
-│   ├── ipc/                        # 9 handlers IPC (finos, delegam ao service)
-│   └── validators/                 # Zod schemas (4 validators)
-├── preload/                        # 7 preloads (contextBridge API)
+│   │   ├── servico.service.ts
+│   │   ├── categoria-servico.service.ts
+│   │   ├── subcategoria-servico.service.ts
+│   │   └── equipe.service.ts       # CRUD + vinculo usuario-equipe
+│   ├── ipc/                        # 13 handlers IPC (finos, delegam ao service)
+│   └── validators/                 # 7 validators (Zod schemas)
+├── preload/                        # 13 preloads (contextBridge API)
 ├── renderer/                       # React SPA
-│   ├── pages/                      # 9 páginas
-│   │   └── OS/Detail/index.tsx     # ~740 linhas — página mais complexa
+│   ├── pages/                      # 11 páginas
+│   │   ├── OS/Detail/index.tsx     # ~830 linhas — página mais complexa
+│   │   ├── Teams/index.tsx         # Gestão de equipes
+│   │   ├── EmailInbox/             # Monitor de e-mail
+│   │   └── Reports/                # 9 relatórios
 │   ├── components/
 │   │   ├── forms/                  # client-form, equipment-form, os-form
 │   │   ├── layout/                 # sidebar, header, app-layout
 │   │   └── shared/                 # modal, data-table, currency-input, status-badge, etc.
 │   ├── lib/
-│   │   ├── auth-context.tsx        # Contexto + sessionStorage
+│   │   ├── auth-context.tsx        # Contexto + sessionStorage + controle de acesso por equipe
 │   │   ├── constants.ts            # APP_NAME, APP_VERSION (via Vite define)
-│   │   └── utils.ts                # formatDate, formatCurrency, formatCPF, etc.
-│   ├── routes/index.tsx            # HashRouter, 8 rotas
-│   └── test/                       # Vitest (5 suites, 28 testes)
+│   │   └── utils.ts                # formatDate, formatCurrency, formatCPF_CNPJ, etc.
+│   ├── routes/index.tsx            # HashRouter, 12 rotas
+│   └── test/                       # Vitest
 └── shared/
-    ├── constants/ipc-channels.ts   # 40+ canais IPC tipados
+    ├── constants/ipc-channels.ts   # 60+ canais IPC tipados
     └── types/
         ├── entities.types.ts       # Interfaces + DTOs + enums
         └── electron.d.ts           # window.osTech API type declarations
@@ -109,18 +115,28 @@ ABERTA → EM_DIAGNOSTICO → AGUARDANDO_APROVACAO → AGUARDANDO_PECA → EM_EX
 
 ## Banco de Dados (Prisma + SQLite)
 
-### Models (9)
+### Models (13)
 | Model | Key Relationships |
 |-------|------------------|
 | **Cliente** | → Equipamento[], OrdemServico[] |
 | **Equipamento** | → Cliente, OrdemServico[] (etiqueta única `[A-Z0-9]{5}`) |
-| **OrdemServico** | → Cliente, Equipamento, EventoOS[], ItemOS[], Inventario[] |
+| **OrdemServico** | → Cliente, Equipamento?, Tecnico?, EventoOS[], ItemOS[], Inventario[] |
 | **EventoOS** | → OrdemServico (cascade), Usuario (append-only) |
 | **ItemOS** | → OrdemServico (cascade) — `tipoItem` + `referenciaId` (polimórfico) |
 | **Inventario** | → OrdemServico (cascade) — `jsonCompleto` (JSON string), múltiplos por OS |
-| **Servico** / **Peca** | Catálogo, referenciado por ItemOS |
-| **Usuario** | → EventoOS[], Log[] (soft delete via `ativo`) |
+| **Servico** | → CategoriaServico?, SubcategoriaServico? — catálogo referenciado por ItemOS |
+| **Peca** | Catálogo, referenciado por ItemOS |
+| **CategoriaServico** | → SubcategoriaServico[], EquipeCategoria[] |
+| **SubcategoriaServico** | → CategoriaServico (unique: nome + categoriaId) |
+| **Equipe** | → EquipeCategoria[], UsuarioEquipe[] |
+| **Usuario** | → EventoOS[], Log[], UsuarioEquipe[] |
 | **Log** | → Usuario? (set null) — 7 categorias, rotação 50k |
+
+### Tabelas de Junção
+| Model | Relação |
+|-------|---------|
+| **EquipeCategoria** | Equipe ↔ CategoriaServico (N:N) |
+| **UsuarioEquipe** | Usuario ↔ Equipe (N:N) |
 
 ### Enums (8)
 `StatusOS` (8), `PerfilUsuario` (4), `TipoItem`, `TipoDesconto`, `TipoAtendimento`, `FormaPagamento`, `NivelLog`, `CategoriaLog`
@@ -130,16 +146,25 @@ ABERTA → EM_DIAGNOSTICO → AGUARDANDO_APROVACAO → AGUARDANDO_PECA → EM_EX
 ## APIs Expostas (`window.osTech`)
 
 ```typescript
-client:     list, get, create, update, delete
-equipment:  list, listByClient, get, create, update, delete
-os:         list, listByClient, listByPeriod, get, create (tipoAtendimento),
-            update (tipoAtendimento), delete, changeStatus, addEvent, addItem,
-            removeItem, getItens, getEventos, calcularTotal, countByStatus
-user:       list, get, create, update, delete, login, changePassword
-inventory:  get, list, saveManual, listByOs, listByEquipamento
-backup:     create, list, restore
-report:     generate, financial, osByPeriod, save
-log:        list, export
+client:           list, get, create, update, delete
+equipment:        list, listByClient, get, getByTag, create, update, delete
+os:               list, listByClient, listByPeriod, listByEquipamento, get, create,
+                  update, delete, changeStatus, addEvent, addItem, removeItem,
+                  getItens, getEventos, calcularTotal, countByStatus
+user:             list, get, create, update, delete, login, changePassword
+inventory:        get, list, saveManual, listByOs, listByEquipamento
+backup:           create, list, restore
+report:           generate, financial, osByPeriod, byClient, byEquipment, osByStatus,
+                  servicosRealizados, pecasUtilizadas, clientesRecorrentes, save
+log:              list, export
+servico:          list, get, create, update, delete
+categoriaServico: list, get, create, update, delete
+subcategoriaServico: list, get, getByCategoria, create, update, delete
+equipe:           list, get, create, update, delete, addUsuario, removeUsuario, getByUsuario
+peca:             list, get, create, update, delete
+email:            list, get, checkMail, linkClient, convertToOS, reject,
+                  configGet, configSave, listByStatus, countPending,
+                  listContatos, createContato, updateContato, deleteContato
 ```
 
 ---
@@ -148,12 +173,23 @@ log:        list, export
 
 ### Autenticação
 - Login com PBKDF2 (sem bcrypt), sessão em `sessionStorage`
-- 4 perfis: PROPRIETÁRIO (tudo), GESTOR (relatórios), TÉCNICO (execução), RECEPCIONISTA (cadastro)
+- 4 perfis: PROPRIETÁRIO (tudo), GESTOR (quase tudo), TÉCNICO (execução), RECEPCIONISTA (cadastro)
+- Controle de acesso baseado em equipe (TECNICO/RECEPCIONISTA)
 - Usuário padrão: `admin / admin123` (criado automaticamente na primeira execução)
 
+### Controle de Acesso por Equipe (v2.3)
+- **Equipes** vinculadas a categorias de serviço (N:N) e usuários (N:N)
+- **PROPRIETÁRIO/GESTOR**: acesso total a todas as funcionalidades
+- **TECNICO/RECEPCIONISTA**: acesso restrito às categorias da sua equipe
+  - Sidebar filtrada (itens administrativos ocultos)
+  - Formulário de OS mostra apenas categorias da equipe
+  - Controles de desconto e pagamento restritos no detalhe da OS
+- Página de gestão de equipes com CRUD + vinculo de categorias e membros
+
 ### Clientes (CRUD)
-- Nome + CPF (obrigatórios, CPF único), soft delete
-- Formatação automática: CPF, telefone, UPPERCASE
+- Nome + CPF/CNPJ (obrigatórios, único), soft delete
+- Formatação automática: CPF, CNPJ (alfanumérico), telefone, UPPERCASE
+- CPF/CNPJ aceita letras (formato XX.XXX.XXX/XXXX-XX para CNPJ)
 
 ### Equipamentos (CRUD)
 - Vínculo com cliente, tipo, etiqueta única auto-gerada
@@ -164,12 +200,34 @@ log:        list, export
 - Itens (serviços/peças), eventos (histórico), desconto global (R$ ou %), forma de pagamento
 - Tipo de Atendimento: **Interno** (bancada/remoto) ou **Externo** (visita técnica)
 - Equipamento opcional na abertura da OS — opção **ND** (Não Determinado) para serviços remotos
+- Atribuição de técnico (`tecnicoId`)
 - Eventos ordenados do mais antigo ao mais recente
 - Busca por nº OS ou cliente
+
+### Catálogo de Serviços e Peças
+- CRUD completo com abas: Serviços | Peças | Categorias | Subcategorias
+- Categorias de serviço com subcategorias (hierarquia simples)
+- Filtros por categoria e subcategoria na aba de serviços
+- Formulário de serviço com seleção de categoria/subcategoria
+- Campos de valor com `CurrencyInput` (máscara pt-BR, R$ inline)
+
+### Gestão de Equipes (v2.3)
+- CRUD de equipes (nome, descrição)
+- Vinculação de categorias de serviço (checkbox)
+- Gestão de membros (adicionar/remover usuários)
+- Página dedicada com DataTable + modais
 
 ### Inventário de Hardware
 - Registro manual via textarea (descrição livre), append-only (imutável)
 - Múltiplos registros por OS, exibidos do mais antigo ao mais recente
+
+### Notificações por E-mail (v2.1)
+- Monitoramento de caixa de entrada via IMAP (polling a cada 60s)
+- Badge de pendências na sidebar
+- Vinculação de e-mail a cliente existente
+- Conversão de e-mail em OS com dados pré-preenchidos
+- Rejeição de e-mail com motivo
+- Configuração de e-mail (host, porta, credenciais)
 
 ### Relatórios (PDF)
 | Relatório | Geração |
@@ -180,6 +238,10 @@ log:        list, export
 | Recibo | Cliente, equipamento, serviços, assinatura dupla |
 | Financeiro | Resumo por período + forma de pagamento + descontos |
 | OS por Período | Listagem por intervalo de datas |
+| OS por Status | Filtrado por status específico |
+| Serviços Realizados | Serviços executados no período |
+| Peças Utilizadas | Peças utilizadas no período |
+| Clientes Recorrentes | Ranking de clientes por número de OS |
 
 Rodapé em todas as páginas: "OS.Tech - Sistema de Gestão para Assistência Técnica" + numeração
 
@@ -205,18 +267,20 @@ Rodapé em todas as páginas: "OS.Tech - Sistema de Gestão para Assistência T�
 - **Desconto**: calculado via SQL aggregate no repositório, aplicado ao subtotal
 - **Inventory capture**: script PowerShell removido da UI, mantido como referência em `scripts/inventory.ps1`
 - **Todas as queries usam `inventarios`** (plural — o campo de relação em OrdemServico), nunca `inventario` (singular — nome do modelo Prisma)
-- **Tipo de atendimento**: campo `tipoAtendimento` na OS (`INTERNO` ou `EXTERNO`), com default `INTERNO`. O ID de sessão remota (AnyDesk, TeamViewer) é registrado como evento textual, não como campo estruturado
-- **Equipamento opcional**: `equipamentoId` nullable na OS — permite abrir ordens sem equipamento vinculado (útil para atendimentos remotos onde o equipamento não é identificado ou não faz sentido cadastrar)
-- **CurrencyInput unificado**: todos os campos de valor (catálogo, OS, descontos) usam o mesmo componente `CurrencyInput` com máscara `pt-BR`, modo centavos e prefixo `R$` inline
-- **Ordenação cronológica**: eventos da OS e listas de OS ordenados do mais antigo ao mais recente (ascendente), tanto no backend (Prisma `orderBy`) quanto no frontend (`.sort()` defensivo)
-- **Banco pre-semeado com dados de teste**: `init-db.js` agora gera um banco completo com 5 clientes, 8 equipamentos, catálogo de serviços/peças, 7 OS, eventos, itens, inventários e logs — eliminando a necessidade de povoar manualmente a cada instalação limpa
+- **Tipo de atendimento**: campo `tipoAtendimento` na OS (`INTERNO` ou `EXTERNO`), com default `INTERNO`
+- **Equipamento opcional**: `equipamentoId` nullable na OS — permite abrir ordens sem equipamento vinculado
+- **CurrencyInput unificado**: todos os campos de valor usam o mesmo componente `CurrencyInput`
+- **Ordenação cronológica**: eventos e listas ordenados do mais antigo ao mais recente
+- **CPF/CNPJ alfanumérico**: validação com ASCII-48 + módulo 11, aceita letras em CNPJ
+- **Controle de acesso por equipe**: PROPRIETARIO/GESTOR têm acesso total; TECNICO/RECEPCIONISTA restrito às categorias da sua equipe via `hasAccessToCategoria()` no auth-context
+- **Sidebar dinâmica**: itens de menu filtrados por `perfis` do usuário logado
 
 ---
 
 ## Comandos
 
 ```bash
-npm test                          # vitest (28 testes)
+npm test                          # vitest
 npm run dev                       # Vite dev (renderer only)
 npm run electron:dev              # Electron dev completo
 npm run build                     # tsc + vite build (renderer)
@@ -242,9 +306,16 @@ npm run prisma:seed               # Popula banco
 
 ```
 prisma/migrations/
-├── 20260624145456_init/                            # Schema inicial
-├── 20260626134355_add_desconto_formapagamento/    # Desconto + formaPagamento
-└── 20260702210400_add_tipo_atendimento/           # TipoAtendimento + equipamentoId opcional
+├── 20260624145456_init/                                # Schema inicial
+├── 20260626134355_add_desconto_formapagamento/        # Desconto + formaPagamento
+├── 20260701172507_add_multiplos_inventarios/          # Múltiplos inventários por OS
+├── 20260702210400_add_tipo_atendimento/               # TipoAtendimento + equipamentoId opcional
+├── 20260703225334_add_email_solicitacao/              # EmailSolicitacao + ClienteContato
+├── 20260703225441_add_configuracao/                   # Configuracao (chave-valor)
+├── 20260715000000_rename_cpf_to_cpfCnpj/              # Renomear campo CPF para CPF/CNPJ
+├── 20260715195759_rename_cpf_to_cpf_cnpj/            # Renomear campo CPF para CPF/CNPJ
+├── 20260716135156_add_categoria_servico/              # CategoriaServico + FK em Servico
+└── 20260716165301_add_subcategorias_equipes/          # SubcategoriaServico, Equipe, EquipeCategoria, UsuarioEquipe
 ```
 
 Após alterar `schema.prisma`:
@@ -257,52 +328,95 @@ npx prisma migrate dev --name <nome>
 
 ## Histórico de Versões
 
-### ✅ v1.2.1 (Atual)
+### ✅ v2.3.0 (Atual)
+
+**Subcategorias de Serviço:**
+- Novo modelo `SubcategoriaServico` com relação N:1 com `CategoriaServico`
+- Constraint `@@unique([nome, categoriaId])` — subcategoria única por categoria
+- Aba "Subcategorias" no Catálogo com CRUD completo
+- Filtros por categoria e subcategoria na aba de Serviços
+- Formulário de serviço com seleção de categoria → subcategoria (cascata)
+
+**Gestão de Equipes:**
+- Novos modelos: `Equipe`, `EquipeCategoria` (N:N), `UsuarioEquipe` (N:N)
+- Página `/equipes` com CRUD de equipes
+- Vinculação de categorias de serviço a equipes (checkbox)
+- Gestão de membros (adicionar/remover usuários)
+- Rota e sidebar adicionadas
+
+**Controle de Acesso Baseado em Equipe:**
+- `auth-context.tsx`: novas funções `hasAccessToCategoria()`, `getCategoriasIds()`, `isProprietario`, `isGestor`
+- Busca automática de equipes do usuário logado via `equipe.getByUsuario()`
+- **Sidebar dinâmica**: itens de menu filtrados por perfil do usuário
+  - PROPRIETÁRIO/GESTOR: acesso total
+  - TÉCNICO/RECEPCIONISTA: apenas Dashboard, Equipamentos, OS, Catálogo, Chamados
+- **Formulário de OS**: categorias filtradas pela equipe do usuário
+- **Detalhe da OS**: controles de desconto e pagamento restritos para TECNICO/RECEPCIONISTA
+
+**Gestão de Usuários (atualizada):**
+- Formulário de edição com seleção de equipes (checkbox)
+- Vinculação/desvinculação automática ao salvar
+
+**Seed de teste atualizado:**
+- 5 categorias com 11 subcategorias
+- 5 equipes vinculadas às categorias
+- João (Técnico) → Equipe Bancada + Suporte
+- Maria (Recepcionista) → Equipe Bancada + Rede + CFTV
+- Admin/Gestor → acesso total
+
+**Instalador v2.3.0:**
+- `release/OS.Tech Setup 2.3.0.exe` (NSIS, 111.5 MB)
+- `release/OS.Tech 2.3.0.exe` (portátil, 111.3 MB)
+- `init-db.js` atualizado com subcategorias, equipes e vínculos
+
+### ✅ v2.2.0
+
+**Categorias de Serviço:**
+- Novo modelo `CategoriaServico` com CRUD completo
+- Aba "Categorias" no Catálogo com DataTable + modal
+- Filtro por categoria na aba de Serviços
+- Campo `categoriaId` obrigatório em Servico
+- Seed com 5 categorias (Bancada, Rede, CFTV, Servidores, WEB)
+
+### ✅ v2.1.0
+
+**Notificações por E-mail:**
+- Monitoramento IMAP com polling (60s)
+- Badge de pendências na sidebar
+- Conversão de e-mail em OS
+- Vinculação de e-mail a cliente
+- Rejeição com motivo
+
+### ✅ v2.0.0
+
+**CNPJ Alfanumérico:**
+- Validação com ASCII-48 + módulo 11
+- `formatCNPJ()` e `formatCPF_CNPJ()` preservam letras
+- Placeholder atualizado com formato alfanumérico
+
+**Dashboard Clicável:**
+- StatCards navegam para rotas correspondentes
+- Itens da lista de OS → `/os/:id`
+- Lista de e-mails → `/email-inbox`
+
+### ✅ v1.2.1
 
 **Banco pre-semeado com dados de teste:**
-- `init-db.js` agora gera banco completo com 5 clientes, 8 equipamentos, catálogo (8 serviços + 6 peças), 7 OS, 24 eventos, 10 itens, 2 inventários e 10 logs
-- Usuários de teste: `admin/admin123` (PROPRIETÁRIO), `joao.silva/tec123` (TÉCNICO), `maria.santos/rec123` (RECEPCIONISTA), `carlos.oliveira/gest123` (GESTOR)
+- `init-db.js` gera banco completo com 5 clientes, 8 equipamentos, catálogo, 7 OS, eventos, itens, inventários e logs
 
 **Tipo de Atendimento:**
-- Novo campo `tipoAtendimento: INTERNO | EXTERNO` na OS
-- `equipamentoId` passou a ser opcional — permite abrir OS sem equipamento (opção "ND — Não Determinado")
-- Badge colorido na listagem e detalhes da OS (azul = Interno, laranja = Externo)
-- ID de sessão remota registrado como evento textual
-
-**Campos de valor unificados:**
-- Catálogo (serviços e peças) agora usa `CurrencyInput` com máscara `pt-BR` e prefixo `R$` inline, igual aos demais campos de valor do sistema
-
-**Ordenação cronológica:**
-- Eventos da OS: do mais antigo ao mais recente (ascendente)
-- Listagem de OS: da mais antiga à mais recente
-- Aplicado em todas as queries (backend + frontend)
+- Campo `tipoAtendimento: INTERNO | EXTERNO` na OS
+- `equipamentoId` opcional (opção "ND — Não Determinado")
+- Badge colorido na listagem e detalhes
 
 ### ✅ v1.2.0
 
-**Catálogo de Serviços e Peças (CRUD completo):**
-- 8 novos arquivos (repositories, services, validators, IPC handlers, preloads)
-- Página `/catalog` com abas Serviços/Peças, DataTable, busca, modal de formulário, soft delete
-- Rota e sidebar adicionadas
-
-**Gestão de Usuários (página CRUD):**
-- Página `/users` com DataTable, busca, modal de formulário, soft delete
-- Rota e sidebar adicionadas
-
-**Correções:**
-- `OS_STATUS` no relatório corrigido para 8 valores reais do enum `StatusOS`
-- Seed corrigido: `bcrypt.hash()` → `hashPassword()` (PBKDF2, 210k iterações)
-- Canal `inventario:delete` agora usa constante `IPC_CHANNELS.INVENTORY.DELETE`
-- Canais mortos `USER.LOGOUT` e `BACKUP.VALIDATE` removidos
-- `updateClientSchema` estendido com `ativo?: boolean`
-- `UpdateUsuarioDTO.senhaHash` → `senha`
-- `UpdateOrdemServicoDTO.status` removido (status só via `changeStatus`)
-- Repositories usam `Record<string, unknown>` para `update()` (Prisma client custom path)
-- Troca de Senha conectado (já existia, só faltava ligação na sidebar)
+**Catálogo de Serviços e Peças (CRUD completo)**
+**Gestão de Usuários (página CRUD)**
 
 ### ✅ v1.1.0
 
-- 4 relatórios implementados com data range + modo simplificado/analítico (OS por Status, Serviços Realizados, Peças Utilizadas, Clientes Recorrentes)
-- Ícones emoji restaurados na página de Relatórios
+- 4 relatórios implementados com data range + modo simplificado/analítico
 
 ---
 
@@ -313,7 +427,7 @@ O planejamento das próximas versões e funcionalidades futuras está documentad
 📄 [`docs/roadmap.md`](docs/roadmap.md)
 
 Inclui: notificações por e-mail (v2.1), categorias de serviços (v2.2),
-contratos/recorrência (v2.3), agendamento (v2.4) e expansão WEB (v3.0).
+subcategorias/equipes/controle de acesso (v2.3), contratos/recorrência (v2.4), agendamento (v2.5) e expansão WEB (v3.0).
 
 Problemas detectados entre versões devem ser registrados em `docs/roadmap.md`
 na seção "Registro de Problemas / Dívida Técnica".

@@ -29,25 +29,11 @@ Implementado em: 03/07/2026
 
 ## v2.1 — Notificações por E-mail
 
-Pré-planejado em: 03/07/2026
+Implementado em: 16/07/2026
 
-**Objetivo:** Quando houver interação com uma OS originada de e-mail, o sistema deve notificar o contato remetente automaticamente.
-
-### Funcionalidades
-
-- [ ] **Notificação de eventos** — Ao adicionar um evento em OS com `EmailSolicitacao.osId` preenchido, enviar e-mail para o contato:
-  > "Sua solicitação nº {numeroOS} teve um novo evento: {descricao}"
-- [ ] **Envio de PDF na conclusão** — Quando a OS transitar para `CONCLUIDA` ou `ENTREGUE`, enviar o PDF analítico como anexo
-- [ ] **Serviço SMTP** — Reutilizar credenciais já armazenadas no `email-config.service.ts` (Gmail suporta IMAP + SMTP)
-
-### Arquivos esperados
-
-- `src/main/services/email-notification.service.ts` — Lógica de envio SMTP
-- Hook no `os.service.ts` (`addEvent` / `changeStatus`)
-
-### Dependências
-
-- Nativas: `nodemailer` ou SMTP embutido
+- [x] **Notificação de eventos** — Ao adicionar um evento em OS, enviar e-mail para o contato que iniciou a solicitacao (via EmailSolicitacao.contatoId) ou fallback para Cliente.email
+- [x] **Envio de PDF na conclusão** — Quando a OS transitar para `CONCLUIDA` ou `ENTREGUE`, enviar o PDF analítico como anexo
+- [x] **Serviço SMTP** — Reutilizar credenciais já armazenadas no `email-config.service.ts` (Gmail suporta IMAP + SMTP)
 
 ---
 

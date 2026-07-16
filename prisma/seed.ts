@@ -41,7 +41,12 @@ async function main() {
   await prisma.equipamento.deleteMany();
   await prisma.cliente.deleteMany();
   await prisma.servico.deleteMany();
+  await prisma.subcategoriaServico.deleteMany();
+  await prisma.categoriaServico.deleteMany();
   await prisma.peca.deleteMany();
+  await prisma.usuarioEquipe.deleteMany();
+  await prisma.equipeCategoria.deleteMany();
+  await prisma.equipe.deleteMany();
   await prisma.usuario.deleteMany();
   console.log('   Dados limpos com sucesso.\n');
 
@@ -94,7 +99,7 @@ async function main() {
     prisma.cliente.create({
       data: {
         nome: 'Pedro Henrique Almeida',
-        cpf: '529.982.247-25',
+        cpfCnpj: '529.982.247-25',
         rg: '12.345.678-9',
         telefone: '(11) 3456-7890',
         whatsapp: '(11) 99876-5432',
@@ -108,7 +113,7 @@ async function main() {
     prisma.cliente.create({
       data: {
         nome: 'Ana Beatriz Souza',
-        cpf: '262.735.830-70',
+        cpfCnpj: '262.735.830-70',
         rg: '98.765.432-1',
         telefone: '(21) 2345-6789',
         whatsapp: '(21) 98765-4321',
@@ -121,7 +126,7 @@ async function main() {
     prisma.cliente.create({
       data: {
         nome: 'Marcos Tech Solutions LTDA',
-        cpf: '12.345.678/0001-90',
+        cpfCnpj: '12.345.678/0001-90',
         telefone: '(31) 3344-5566',
         whatsapp: '(31) 99988-7766',
         email: 'contato@marcostech.com.br',
@@ -134,7 +139,7 @@ async function main() {
     prisma.cliente.create({
       data: {
         nome: 'Fernanda Lima Costa',
-        cpf: '155.442.540-90',
+        cpfCnpj: '155.442.540-90',
         rg: '45.678.912-3',
         telefone: '(71) 3232-1111',
         whatsapp: '(71) 98888-2222',
@@ -147,7 +152,7 @@ async function main() {
     prisma.cliente.create({
       data: {
         nome: 'Ricardo Mendes Pereira',
-        cpf: '852.147.963-02',
+        cpfCnpj: '852.147.963-02',
         rg: '32.165.498-7',
         telefone: '(41) 3555-4444',
         whatsapp: '(41) 97777-3333',
@@ -268,29 +273,187 @@ async function main() {
   ]);
   console.log(`   ${equipamentos.length} equipamentos criados (1 inativo).\n`);
 
-  // ── 4. Catálogo de Serviços ───────────────────────────────────────────
+  // ── 4. Categorias de Serviços ───────────────────────────────────────
+  console.log('🏷️  Criando categorias de serviços...');
+  const categorias = await Promise.all([
+    prisma.categoriaServico.create({
+      data: {
+        nome: 'Bancada',
+        descricao: 'Servicos realizados na bancada de trabalho',
+        ativo: true,
+        subcategorias: {
+          create: [
+            { nome: 'Manutencao Preventiva', descricao: 'Limpeza, troca de pasta termica, verificacao geral', ativo: true },
+            { nome: 'Instalacao', descricao: 'Instalacao de sistemas operacionais e drivers', ativo: true },
+            { nome: 'Formatacao', descricao: 'Formatacao completa e configuracao de software', ativo: true },
+          ],
+        },
+      },
+    }),
+    prisma.categoriaServico.create({
+      data: {
+        nome: 'Rede',
+        descricao: 'Configuracao e manutencao de redes',
+        ativo: true,
+        subcategorias: {
+          create: [
+            { nome: 'Configuracao de Rede', descricao: 'Setup de roteadores, switches e firewalls', ativo: true },
+            { nome: 'Cabeamento Estruturado', descricao: 'Instalacao e manutencao de cabeamento de rede', ativo: true },
+          ],
+        },
+      },
+    }),
+    prisma.categoriaServico.create({
+      data: {
+        nome: 'CFTV',
+        descricao: 'Instalacao e manutencao de sistemas de vigilancia',
+        ativo: true,
+        subcategorias: {
+          create: [
+            { nome: 'Instalacao CFTV', descricao: 'Instalacao de cameras e gravadores', ativo: true },
+            { nome: 'Manutencao CFTV', descricao: 'Manutencao preventiva e corretiva de sistemas de vigilancia', ativo: true },
+          ],
+        },
+      },
+    }),
+    prisma.categoriaServico.create({
+      data: {
+        nome: 'Servidores',
+        descricao: 'Manutencao e configuracao de servidores',
+        ativo: true,
+        subcategorias: {
+          create: [
+            { nome: 'Manutencao Servidor', descricao: 'Manutencao preventiva e corretiva de servidores', ativo: true },
+            { nome: 'Configuracao Servidor', descricao: 'Setup e configuracao de servidores', ativo: true },
+          ],
+        },
+      },
+    }),
+    prisma.categoriaServico.create({
+      data: {
+        nome: 'WEB',
+        descricao: 'Servicos web, hospedagem e dominios',
+        ativo: true,
+        subcategorias: {
+          create: [
+            { nome: 'Hospedagem', descricao: 'Configuracao e manutencao de hospedagem web', ativo: true },
+            { nome: 'Dominio', descricao: 'Gerenciamento de dominios e DNS', ativo: true },
+          ],
+        },
+      },
+    }),
+  ]);
+  console.log(`   ${categorias.length} categorias criadas com subcategorias.\n`);
+
+  // Buscar subcategorias criadas para vincular aos serviços
+  const subcategoriasAll = await prisma.subcategoriaServico.findMany({
+    include: { categoria: true },
+    orderBy: [{ categoriaId: 'asc' }, { id: 'asc' }],
+  });
+  const subByCategoria: Record<number, typeof subcategoriasAll> = {};
+  for (const s of subcategoriasAll) {
+    if (!subByCategoria[s.categoriaId]) subByCategoria[s.categoriaId] = [];
+    subByCategoria[s.categoriaId].push(s);
+  }
+
+  // ── 5. Equipes ──────────────────────────────────────────────────────
+  console.log('🏢 Criando equipes...');
+  const equipes = await Promise.all([
+    prisma.equipe.create({
+      data: {
+        nome: 'Equipe Bancada',
+        descricao: 'Equipe responsavel por servicos de bancada',
+        ativo: true,
+        categorias: {
+          create: [{ categoriaId: categorias[0].id }],
+        },
+      },
+    }),
+    prisma.equipe.create({
+      data: {
+        nome: 'Equipe Rede',
+        descricao: 'Equipe responsavel por servicos de rede',
+        ativo: true,
+        categorias: {
+          create: [{ categoriaId: categorias[1].id }],
+        },
+      },
+    }),
+    prisma.equipe.create({
+      data: {
+        nome: 'Equipe CFTV',
+        descricao: 'Equipe responsavel por servicos de CFTV',
+        ativo: true,
+        categorias: {
+          create: [{ categoriaId: categorias[2].id }],
+        },
+      },
+    }),
+    prisma.equipe.create({
+      data: {
+        nome: 'Equipe Servidores',
+        descricao: 'Equipe responsavel por servicos de servidores',
+        ativo: true,
+        categorias: {
+          create: [{ categoriaId: categorias[3].id }],
+        },
+      },
+    }),
+    prisma.equipe.create({
+      data: {
+        nome: 'Equipe Suporte',
+        descricao: 'Equipe de suporte geral - atendimento presencial e remoto',
+        ativo: true,
+        categorias: {
+          create: [
+            { categoriaId: categorias[4].id },
+            { categoriaId: categorias[0].id },
+          ],
+        },
+      },
+    }),
+  ]);
+  console.log(`   ${equipes.length} equipes criadas.\n`);
+
+  // ── 6. Vínculos Usuário-Equipe ───────────────────────────────────────
+  console.log('🔗 Criando vinculos usuario-equipe...');
+  await prisma.usuarioEquipe.createMany({
+    data: [
+      // João Silva (Técnico) → Equipe Bancada + Equipe Suporte
+      { usuarioId: usuarios[1].id, equipeId: equipes[0].id },
+      { usuarioId: usuarios[1].id, equipeId: equipes[4].id },
+      // Maria Santos (Recepcionista) → Equipe Bancada + Equipe Rede + Equipe CFTV
+      { usuarioId: usuarios[2].id, equipeId: equipes[0].id },
+      { usuarioId: usuarios[2].id, equipeId: equipes[1].id },
+      { usuarioId: usuarios[2].id, equipeId: equipes[2].id },
+    ],
+  });
+  console.log('   5 vinculos criados (Joao→Bancada+Suporte, Maria→Bancada+Rede+CFTV).\n');
+
+  // ── 7. Catálogo de Serviços ───────────────────────────────────────────
   console.log('🔧 Criando catálogo de serviços...');
+  const catBancada = subByCategoria[categorias[0].id] ?? [];
   const servicos = await Promise.all([
     prisma.servico.create({
-      data: { descricao: 'Formatação de Sistema Operacional', valorPadrao: 150, ativo: true },
+      data: { descricao: 'Formatação de Sistema Operacional', valorPadrao: 150, ativo: true, categoriaId: categorias[0].id, subcategoriaId: catBancada[2]?.id },
     }),
     prisma.servico.create({
-      data: { descricao: 'Limpeza Interna e Externa', valorPadrao: 80, ativo: true },
+      data: { descricao: 'Limpeza Interna e Externa', valorPadrao: 80, ativo: true, categoriaId: categorias[0].id, subcategoriaId: catBancada[0]?.id },
     }),
     prisma.servico.create({
-      data: { descricao: 'Troca de SSD', valorPadrao: 120, ativo: true },
+      data: { descricao: 'Troca de SSD', valorPadrao: 120, ativo: true, categoriaId: categorias[0].id, subcategoriaId: catBancada[0]?.id },
     }),
     prisma.servico.create({
-      data: { descricao: 'Instalação Windows 11 Pro', valorPadrao: 200, ativo: true },
+      data: { descricao: 'Instalação Windows 11 Pro', valorPadrao: 200, ativo: true, categoriaId: categorias[0].id, subcategoriaId: catBancada[1]?.id },
     }),
     prisma.servico.create({
-      data: { descricao: 'Recuperação de Dados', valorPadrao: 500, ativo: true },
+      data: { descricao: 'Recuperação de Dados', valorPadrao: 500, ativo: true, categoriaId: categorias[0].id, subcategoriaId: catBancada[2]?.id },
     }),
     prisma.servico.create({
-      data: { descricao: 'Troca de Bateria Notebook', valorPadrao: 180, ativo: true },
+      data: { descricao: 'Troca de Bateria Notebook', valorPadrao: 180, ativo: true, categoriaId: categorias[0].id, subcategoriaId: catBancada[0]?.id },
     }),
     prisma.servico.create({
-      data: { descricao: 'Troca de Tela Notebook', valorPadrao: 450, ativo: true },
+      data: { descricao: 'Troca de Tela Notebook', valorPadrao: 450, ativo: true, categoriaId: categorias[0].id, subcategoriaId: catBancada[0]?.id },
     }),
     prisma.servico.create({
       data: { descricao: 'Backup Completo de Dados', valorPadrao: 50, ativo: false },
@@ -298,7 +461,7 @@ async function main() {
   ]);
   console.log(`   ${servicos.length} serviços criados (1 inativo).\n`);
 
-  // ── 5. Catálogo de Peças ──────────────────────────────────────────────
+  // ── 8. Catálogo de Peças ──────────────────────────────────────────────
   console.log('🔩 Criando catálogo de peças...');
   const pecas = await Promise.all([
     prisma.peca.create({
@@ -352,7 +515,7 @@ async function main() {
   ]);
   console.log(`   ${pecas.length} peças criadas (1 inativa).\n`);
 
-  // ── 6. Ordens de Serviço ──────────────────────────────────────────────
+  // ── 9. Ordens de Serviço ──────────────────────────────────────────────
   console.log('📋 Criando ordens de serviço...');
   const osList = await Promise.all([
     prisma.ordemServico.create({
@@ -437,7 +600,7 @@ async function main() {
   ]);
   console.log(`   ${osList.length} ordens de serviço criadas.\n`);
 
-  // ── 7. Eventos ────────────────────────────────────────────────────────
+  // ── 10. Eventos ───────────────────────────────────────────────────────
   console.log('📝 Criando eventos...');
   const eventosData = [
     // OS 0001 - ENTREGUE
@@ -482,7 +645,7 @@ async function main() {
   await prisma.eventoOS.createMany({ data: eventosData });
   console.log(`   ${eventosData.length} eventos criados.\n`);
 
-  // ── 8. Itens de OS (serviços e peças) ─────────────────────────────────
+  // ── 11. Itens de OS (serviços e peças) ─────────────────────────────────
   console.log('📦 Criando itens de OS...');
   const itensOS = await prisma.$transaction([
     // OS 0001 - Formatação + Limpeza
@@ -604,7 +767,7 @@ async function main() {
   ]);
   console.log(`   ${itensOS.length} itens de OS criados.\n`);
 
-  // ── 9. Inventários ────────────────────────────────────────────────────
+  // ── 12. Inventários ────────────────────────────────────────────────────
   console.log('🔍 Criando inventários...');
   await prisma.inventario.create({
     data: {
@@ -662,7 +825,7 @@ async function main() {
   });
   console.log('   2 inventários criados.\n');
 
-  // ── 10. Logs ───────────────────────────────────────────────────────────
+  // ── 13. Logs ───────────────────────────────────────────────────────────
   console.log('📜 Criando logs de sistema...');
   const logsData = [
     { dataHora: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000), nivel: NivelLog.INFO, categoria: CategoriaLog.AUTH, acao: 'LOGIN', descricao: 'Usuário admin realizou login com sucesso.', usuarioId: usuarios[0].id },
@@ -686,6 +849,10 @@ async function main() {
   console.log(`   👤 Usuários:        ${usuarios.length}`);
   console.log(`   👥 Clientes:        ${clientes.length} (1 inativo)`);
   console.log(`   🖥️  Equipamentos:    ${equipamentos.length} (1 inativo)`);
+  console.log(`   🏷️  Categorias:      ${categorias.length}`);
+  console.log(`   📂 Subcategorias:   ${subcategoriasAll.length}`);
+  console.log(`   🏢 Equipes:         ${equipes.length}`);
+  console.log(`   🔗 Vinculos UE:     5`);
   console.log(`   🔧 Serviços:        ${servicos.length} (1 inativo)`);
   console.log(`   🔩 Peças:           ${pecas.length} (1 inativa)`);
   console.log(`   📋 Ordens de Serviço: ${osList.length}`);

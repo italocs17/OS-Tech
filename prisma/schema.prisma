@@ -109,7 +109,7 @@ enum StatusEmail {
 model Cliente {
   id           Int      @id @default(autoincrement())
   nome         String
-  cpf          String   @unique
+  cpfCnpj      String   @unique
   rg           String?
   telefone     String?
   whatsapp     String?
@@ -177,6 +177,7 @@ model OrdemServico {
   numeroOS        String           @unique
   clienteId       Int
   equipamentoId   Int?
+  tecnicoId       Int?
   tipoAtendimento TipoAtendimento  @default(INTERNO)
   status          StatusOS         @default(ABERTA)
   dataEntrada     DateTime         @default(now())
@@ -190,6 +191,7 @@ model OrdemServico {
   // Relacionamentos
   cliente     Cliente      @relation(fields: [clienteId], references: [id])
   equipamento Equipamento? @relation(fields: [equipamentoId], references: [id])
+  tecnico     Usuario?     @relation(fields: [tecnicoId], references: [id])
   eventos     EventoOS[]
   itens       ItemOS[]
   inventarios Inventario[]
@@ -197,6 +199,7 @@ model OrdemServico {
 
   @@index([clienteId])
   @@index([equipamentoId])
+  @@index([tecnicoId])
   @@index([status])
   @@index([dataEntrada])
   @@map("ordem_servico")
@@ -224,13 +227,86 @@ model EventoOS {
 /// Servico - Catalogo de servicos disponiveis
 /// Regras: soft delete, valor nao negativo, historico preservado
 model Servico {
-  id          Int     @id @default(autoincrement())
-  descricao   String
-  valorPadrao Float   @default(0)
-  ativo       Boolean @default(true)
+  id              Int     @id @default(autoincrement())
+  descricao       String
+  valorPadrao     Float   @default(0)
+  ativo           Boolean @default(true)
+  categoriaId     Int?
+  subcategoriaId  Int?
+  categoria       CategoriaServico?     @relation(fields: [categoriaId], references: [id])
+  subcategoria    SubcategoriaServico?  @relation(fields: [subcategoriaId], references: [id])
 
   @@index([descricao])
+  @@index([categoriaId])
+  @@index([subcategoriaId])
   @@map("servico")
+}
+
+/// CategoriaServico - Categorias para agrupar servicos
+/// Exemplos: Bancada, Rede, CFTV, Servidores, WEB
+model CategoriaServico {
+  id               Int                  @id @default(autoincrement())
+  nome             String               @unique
+  descricao        String?
+  ativo            Boolean              @default(true)
+  servicos         Servico[]
+  subcategorias    SubcategoriaServico[]
+  equipeCategorias EquipeCategoria[]
+
+  @@map("categoria_servico")
+}
+
+/// SubcategoriaServico - Subcategorias dentro de uma categoria
+/// Exemplos: Bancada > Manutencao Preventiva, Instalacao, Formatacao
+model SubcategoriaServico {
+  id          Int      @id @default(autoincrement())
+  nome        String
+  descricao   String?
+  ativo       Boolean  @default(true)
+  categoriaId Int
+  categoria   CategoriaServico @relation(fields: [categoriaId], references: [id])
+  servicos    Servico[]
+
+  @@unique([nome, categoriaId])
+  @@index([categoriaId])
+  @@map("subcategoria_servico")
+}
+
+/// Equipe - Equipes de trabalho vinculadas a categorias
+/// Exemplos: Equipe Bancada, Equipe CFTV, Equipe Rede
+model Equipe {
+  id         Int                @id @default(autoincrement())
+  nome       String             @unique
+  descricao  String?
+  ativo      Boolean            @default(true)
+  categorias EquipeCategoria[]
+  usuarios   UsuarioEquipe[]
+
+  @@map("equipe")
+}
+
+/// EquipeCategoria - Vinculo N:N entre equipes e categorias
+model EquipeCategoria {
+  id          Int              @id @default(autoincrement())
+  equipeId    Int
+  categoriaId Int
+  equipe      Equipe           @relation(fields: [equipeId], references: [id], onDelete: Cascade)
+  categoria   CategoriaServico @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+
+  @@unique([equipeId, categoriaId])
+  @@map("equipe_categoria")
+}
+
+/// UsuarioEquipe - Vinculo N:N entre usuarios e equipes
+model UsuarioEquipe {
+  id        Int      @id @default(autoincrement())
+  usuarioId Int
+  equipeId  Int
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  equipe    Equipe  @relation(fields: [equipeId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, equipeId])
+  @@map("usuario_equipe")
 }
 
 /// Peca - Catalogo de pecas disponiveis
@@ -295,9 +371,11 @@ model Usuario {
   ativo     Boolean       @default(true)
 
   // Relacionamentos
-  eventos             EventoOS[]
-  logs                Log[]
+  eventos               EventoOS[]
+  logs                  Log[]
   solicitacoesAprovadas EmailSolicitacao[]
+  osAtribuidas          OrdemServico[]
+  equipes               UsuarioEquipe[]
 
   @@index([perfil])
   @@map("usuario")
