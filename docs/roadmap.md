@@ -5,7 +5,7 @@
 
 ---
 
-## v2.0.0 (Atual) — Solicitações por E-mail
+## v2.0.0 — Solicitações por E-mail
 
 Implementado em: 03/07/2026
 
@@ -18,12 +18,6 @@ Implementado em: 03/07/2026
 - [x] Página "Chamados 💬" com abas: Aguardando / Não cadastrados / Convertidos / Rejeitados
 - [x] Badge de pendências na sidebar
 - [x] Gerenciamento de múltiplos contatos por cliente
-
-### Problemas detectados nesta versão
-
-| ID | Problema | Status |
-|----|----------|--------|
-| — | *(Nenhum reportado ainda)* | — |
 
 ---
 
@@ -39,43 +33,50 @@ Implementado em: 16/07/2026
 
 ## v2.2 — Categorias de Serviços
 
-Pré-planejado em: 03/07/2026
+Implementado em: 16/07/2026 (incluído no v2.3.0)
 
-**Objetivo:** Agrupar serviços do catálogo em categorias (Bancada, Rede, CFTV, Servidores, WEB) e permitir categorização manual da OS.
-
-### Funcionalidades
-
-- [ ] Modelo `CategoriaServico` (`id`, `nome` unique, `descricao`, `ativo`)
-- [ ] Campo `categoriaId` opcional em `Servico`
-- [ ] CRUD de categorias na interface (criar, ativar, inativar)
-- [ ] Filtro por categoria no catálogo de serviços
-- [ ] Categorização manual da OS pelo operador (especialmente para OSs vindas de e-mail)
-
-### Migração
-
-```prisma
-model CategoriaServico {
-  id        Int      @id @default(autoincrement())
-  nome      String   @unique
-  descricao String?
-  ativo     Boolean  @default(true)
-  servicos  Servico[]
-
-  @@map("categoria_servico")
-}
-
-// Servico ganha:
-model Servico {
-  ...
-  categoriaId Int?
-  categoria   CategoriaServico? @relation(fields: [categoriaId], references: [id])
-  ...
-}
-```
+- [x] Modelo `CategoriaServico` (`id`, `nome` unique, `descricao`, `ativo`)
+- [x] Campo `categoriaId` opcional em `Servico`
+- [x] CRUD de categorias na interface (criar, ativar, inativar)
+- [x] Filtro por categoria no catálogo de serviços
+- [x] Categorização manual da OS pelo operador (especialmente para OSs vindas de e-mail)
 
 ---
 
-## v2.3 — Contratos e Recorrência
+## v2.3 — Subcategorias, Equipes e Controle de Acesso
+
+Implementado em: 16/07/2026
+
+**Objetivo:** Hierarquização de serviços, gestão de equipes e controle de acesso baseado em perfil.
+
+### Funcionalidades
+
+- [x] **Subcategorias de Serviço** — Hierarquia simples (Categoria → Subcategorias), unique por categoria
+- [x] **Gestão de Equipes** — CRUD de equipes vinculadas a categorias via N:N (`EquipeCategoria`)
+- [x] **Vínculo Usuário × Equipe** — Usuários vinculados a equipes via N:N (`UsuarioEquipe`)
+- [x] **Controle de Acesso por Perfil** — `hasAccessToCategoria()` no auth context; sidebar dinâmica filtrada por `perfis`
+- [x] **Catálogo com 4 abas** — Serviços | Peças | Categorias | Subcategorias
+- [x] **Formulário de OS com categorias filtradas** — Restrito à equipe do usuário para TECNICO/RECEPCIONISTA
+- [x] **Controles restritos no detalhe da OS** — Desconto e pagamento bloqueados para TECNICO/RECEPCIONISTA
+- [x] **Formulário de Usuário com equipes** — Vínculo de equipes via checkbox
+- [x] **Página de Equipes** — `/equipes` com CRUD, categorias e gestão de membros
+
+### Backend
+
+- [x] Modelos: `SubcategoriaServico`, `Equipe`, `EquipeCategoria`, `UsuarioEquipe`
+- [x] Campo `subcategoriaId` em `Servico`, `tecnicoId` em `OrdemServico`
+- [x] 3 novos repositories + services + validators + IPC handlers + preloads
+- [x] Migration `20260716165301_add_subcategorias_equipes`
+- [x] Seed: 5 categorias, 11 subcategorias, 5 equipes, 5 vínculos UE
+
+### Instalador
+
+- [x] NSIS `OS.Tech Setup 2.3.0.exe` (111.5 MB)
+- [x] Portátil `OS.Tech 2.3.0.exe` (111.3 MB)
+
+---
+
+## v2.4 — Contratos e Recorrência
 
 Pré-planejado em: 03/07/2026
 
@@ -89,7 +90,7 @@ Pré-planejado em: 03/07/2026
 
 ---
 
-## v2.4 — Agendamento e Calendário
+## v2.5 — Agendamento e Calendário
 
 Pré-planejado em: 03/07/2026
 
