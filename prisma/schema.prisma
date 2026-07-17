@@ -69,10 +69,12 @@ enum TipoAtendimento {
 
 /// Formas de pagamento aceitas
 enum FormaPagamento {
+  CONTRATO
   PIX
   ESPECIE
   DEBITO
-  CREDITO
+  CREDITO_A_VISTA
+  CREDITO_PARCELADO
 }
 
 /// Niveis de log do sistema
@@ -131,15 +133,18 @@ model Cliente {
 
 /// ClienteContato - Contatos do cliente que podem abrir solicitacoes por e-mail
 /// Cada cliente pode ter N contatos, cada um com seu proprio e-mail
+/// Um contato por cliente pode ser marcado como padrao (isPadrao)
 model ClienteContato {
   id        Int      @id @default(autoincrement())
   clienteId Int
   nome      String
   email     String   @unique
   telefone  String?
+  isPadrao  Boolean  @default(false)
   ativo     Boolean  @default(true)
 
   cliente Cliente @relation(fields: [clienteId], references: [id])
+  ordensServico OrdemServico[]
   solicitacoes EmailSolicitacao[]
 
   @@index([email])
@@ -178,6 +183,7 @@ model OrdemServico {
   clienteId       Int
   equipamentoId   Int?
   tecnicoId       Int?
+  contatoId       Int?
   tipoAtendimento TipoAtendimento  @default(INTERNO)
   status          StatusOS         @default(ABERTA)
   dataEntrada     DateTime         @default(now())
@@ -192,6 +198,7 @@ model OrdemServico {
   cliente     Cliente      @relation(fields: [clienteId], references: [id])
   equipamento Equipamento? @relation(fields: [equipamentoId], references: [id])
   tecnico     Usuario?     @relation(fields: [tecnicoId], references: [id])
+  contato     ClienteContato? @relation(fields: [contatoId], references: [id])
   eventos     EventoOS[]
   itens       ItemOS[]
   inventarios Inventario[]
@@ -200,6 +207,7 @@ model OrdemServico {
   @@index([clienteId])
   @@index([equipamentoId])
   @@index([tecnicoId])
+  @@index([contatoId])
   @@index([status])
   @@index([dataEntrada])
   @@map("ordem_servico")

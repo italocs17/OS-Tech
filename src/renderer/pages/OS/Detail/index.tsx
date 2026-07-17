@@ -10,17 +10,22 @@ import { FormField } from '../../../components/shared/form-field';
 import { CurrencyInput } from '../../../components/shared/currency-input';
 import { formatDate, formatDateTime, formatCurrency, formatCPF_CNPJ, formatPhone } from '../../../lib/utils';
 import { STATUS_OS } from '../../../lib/constants';
+import { EquipmentForm } from '../../../components/forms/equipment-form';
 import type {
   OrdemServico, EventoOS, ItemOS, TipoItem,
   TipoDesconto, FormaPagamento, TipoAtendimento, InventarioHardware,
 } from '@shared/types/entities.types';
 
 const FORMAS_PAGAMENTO: { value: FormaPagamento; label: string }[] = [
+  { value: 'CONTRATO', label: 'Contrato' },
   { value: 'PIX', label: 'Pix' },
   { value: 'ESPECIE', label: 'Espécie' },
   { value: 'DEBITO', label: 'Débito' },
-  { value: 'CREDITO', label: 'Crédito' },
+  { value: 'CREDITO_A_VISTA', label: 'Crédito à vista' },
+  { value: 'CREDITO_PARCELADO', label: 'Crédito Parcelado' },
 ];
+
+const VISIBLE_EVENTS_COUNT = 3;
 
 export function OSDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -42,19 +47,22 @@ export function OSDetailPage() {
     valorUnitario: 0,
   });
 
-  // Discount state
   const [discountModal, setDiscountModal] = useState(false);
   const [discountTipo, setDiscountTipo] = useState<TipoDesconto>('ABSOLUTO');
   const [discountValor, setDiscountValor] = useState(0);
   const [discountError, setDiscountError] = useState('');
 
-  // Payment state
-  const [paymentForm, setPaymentForm] = useState<FormaPagamento | ''>('');
+  const [paymentModal, setPaymentModal] = useState(false);
 
   const [hardwareCollapsed, setHardwareCollapsed] = useState(true);
   const [hardwareModal, setHardwareModal] = useState(false);
   const [hardwareText, setHardwareText] = useState('');
   const [hardwareError, setHardwareError] = useState('');
+
+  const [showAllEvents, setShowAllEvents] = useState(false);
+
+  const [equipmentSelectModal, setEquipmentSelectModal] = useState(false);
+  const [showNewEquipmentForm, setShowNewEquipmentForm] = useState(false);
 
   const [actionError, setActionError] = useState('');
 
@@ -91,13 +99,20 @@ export function OSDetailPage() {
   const osData = os as OrdemServico | undefined;
   const eventosList = Array.isArray(eventos) ? (eventos as EventoOS[]) : [];
   const itensList = Array.isArray(itens) ? (itens as ItemOS[]) : [];
-  const hardwareData = inventario ? (inventario as any)?.jsonCompleto as InventarioHardware | undefined : undefined;
+
   const { data: hardwareListRaw = [] } = useQuery({
     queryKey: ['os-hardware', osId],
     queryFn: () => window.osTech.inventory.listByOs(osId),
     enabled: !!osId,
   });
   const hardwareList = hardwareListRaw as any[];
+
+  const clienteId = (osData as any)?.clienteId ?? 0;
+  const { data: clientEquipments = [] } = useQuery({
+    queryKey: ['equipment-by-client', clienteId],
+    queryFn: () => window.osTech.equipment.listByClient(clienteId),
+    enabled: clienteId > 0 && equipmentSelectModal,
+  });
 
   const statusMutation = useMutation({
     mutationFn: () =>
@@ -168,6 +183,17 @@ export function OSDetailPage() {
       window.osTech.os.update(osId, { formaPagamento }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['os', osId] });
+      setPaymentModal(false);
+    },
+  });
+
+  const equipmentMutation = useMutation({
+    mutationFn: (equipamentoId: number) =>
+      window.osTech.os.update(osId, { equipamentoId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['os', osId] });
+      setEquipmentSelectModal(false);
+      setShowNewEquipmentForm(false);
     },
   });
 
@@ -201,8 +227,14 @@ export function OSDetailPage() {
   const isItemBlocked = ['CONCLUIDA', 'ENTREGUE', 'CANCELADA'].includes(osData.status);
   const isDiscountBlocked = ['ENTREGUE', 'CANCELADA'].includes(osData.status);
   const canConcluir = selectedStatus !== 'CONCLUIDA' || itensList.length > 0;
-
   const hasDesconto = osData.desconto != null && osData.desconto > 0;
+
+  const sortedEventos = [...eventosList].sort(
+    (a, b) => new Date(b.dataHora).getTime() - new Date(a.dataHora).getTime()
+  );
+  const visibleEventos = showAllEvents ? sortedEventos : sortedEventos.slice(0, VISIBLE_EVENTS_COUNT);
+
+  const pagamentoLabel = FORMAS_PAGAMENTO.find((f) => f.value === osData.formaPagamento)?.label ?? '-';
 
   return (
     <div className="space-y-6">
@@ -229,7 +261,7 @@ export function OSDetailPage() {
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-6 max-h-[calc(100vh-10rem)] overflow-y-auto pr-1">
           <InfoCard title="Informações da OS">
             <div className="space-y-2 text-sm">
               <div className="flex flex-wrap gap-x-6 gap-y-1">
@@ -250,6 +282,46 @@ export function OSDetailPage() {
                 <span className="text-muted-foreground">Endereço:</span>
                 <span className="ml-1 font-medium">{(osData as any).cliente?.endereco ?? '-'}</span>
               </div>
+              {(osData as any).contato && (
+                <div className="rounded-lg border bg-muted/50 p-2">
+                  <div className="flex flex-wrap gap-x-6 gap-y-1">
+                    <div>
+                      <span className="text-muted-foreground">Contato:</span>
+                      <span className="ml-1 font-medium">{(osData as any).contato.nome}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">E-mail:</span>
+                      <span className="ml-1 font-medium">{(osData as any).contato.email}</span>
+                    </div>
+                    {(osData as any).contato.telefone && (
+                      <div>
+                        <span className="text-muted-foreground">Fone:</span>
+                        <span className="ml-1 font-medium">{(osData as any).contato.telefone}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              {!((osData as any).contato) && (osData as any).emailSolicitacao?.[0]?.contato && (
+                <div className="rounded-lg border bg-muted/50 p-2">
+                  <div className="flex flex-wrap gap-x-6 gap-y-1">
+                    <div>
+                      <span className="text-muted-foreground">Contato:</span>
+                      <span className="ml-1 font-medium">{(osData as any).emailSolicitacao[0].contato.nome}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">E-mail:</span>
+                      <span className="ml-1 font-medium">{(osData as any).emailSolicitacao[0].contato.email}</span>
+                    </div>
+                    {(osData as any).emailSolicitacao[0].contato.telefone && (
+                      <div>
+                        <span className="text-muted-foreground">Fone:</span>
+                        <span className="ml-1 font-medium">{(osData as any).emailSolicitacao[0].contato.telefone}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="flex flex-wrap gap-x-6 gap-y-1">
                 <div>
                   <span className="text-muted-foreground">Atendimento:</span>
@@ -279,43 +351,9 @@ export function OSDetailPage() {
                   <span className="text-muted-foreground">Conclusão:</span>
                   <span className="ml-1 font-medium">{osData.dataConclusao ? formatDate(osData.dataConclusao) : '-'}</span>
                 </div>
-              </div>
-              <div className="flex flex-wrap gap-x-6 gap-y-1">
                 <div>
                   <span className="text-muted-foreground">Pagamento:</span>
-                  <span className="ml-1 font-medium">
-                    {osData.formaPagamento ? (
-                      !isDiscountBlocked && !isRestricted ? (
-                        <select
-                          value={osData.formaPagamento}
-                          onChange={(e) => paymentMutation.mutate(e.target.value as FormaPagamento)}
-                          className="rounded border bg-background px-2 py-1 text-sm"
-                        >
-                          <option value="">Selecione...</option>
-                          {FORMAS_PAGAMENTO.map((f) => (
-                            <option key={f.value} value={f.value}>{f.label}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        FORMAS_PAGAMENTO.find((f) => f.value === osData.formaPagamento)?.label ?? osData.formaPagamento
-                      )
-                    ) : (
-                      !isDiscountBlocked && !isRestricted ? (
-                        <select
-                          value=""
-                          onChange={(e) => paymentMutation.mutate(e.target.value as FormaPagamento)}
-                          className="rounded border bg-background px-2 py-1 text-sm"
-                        >
-                          <option value="">Selecione...</option>
-                          {FORMAS_PAGAMENTO.map((f) => (
-                            <option key={f.value} value={f.value}>{f.label}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        '-'
-                      )
-                    )}
-                  </span>
+                  <span className="ml-1 font-medium">{pagamentoLabel}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Desconto:</span>
@@ -324,9 +362,7 @@ export function OSDetailPage() {
                       osData.descontoTipo === 'PERCENTUAL'
                         ? `${osData.desconto}%`
                         : formatCurrency(osData.desconto ?? 0)
-                    ) : (
-                      '-'
-                    )}
+                    ) : '-'}
                   </span>
                 </div>
               </div>
@@ -382,19 +418,6 @@ export function OSDetailPage() {
                   )}
                 </div>
               )}
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setHardwareText('');
-                    setHardwareError('');
-                    setHardwareModal(true);
-                  }}
-                  className="rounded-lg border px-3 py-1.5 text-xs font-medium hover:bg-accent"
-                >
-                  Registrar Hardware
-                </button>
-              </div>
             </div>
           </InfoCard>
 
@@ -403,16 +426,30 @@ export function OSDetailPage() {
               <p className="text-sm text-muted-foreground">Nenhum evento registrado</p>
             ) : (
               <div className="space-y-3">
-                {[...eventosList]
-                  .sort((a, b) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime())
-                  .map((evento) => (
-                    <div key={evento.id} className="border-l-2 border-primary pl-3">
-                      <p className="break-words text-sm">{evento.descricao}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDateTime(evento.dataHora)} - {(evento as any).usuario?.nome ?? 'Usuário'}
-                      </p>
-                    </div>
-                  ))}
+                {visibleEventos.map((evento) => (
+                  <div key={evento.id} className="border-l-2 border-primary pl-3">
+                    <p className="break-words text-sm">{evento.descricao}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDateTime(evento.dataHora)} - {(evento as any).usuario?.nome ?? 'Usuário'}
+                    </p>
+                  </div>
+                ))}
+                {sortedEventos.length > VISIBLE_EVENTS_COUNT && !showAllEvents && (
+                  <button
+                    onClick={() => setShowAllEvents(true)}
+                    className="text-sm font-medium text-primary hover:underline"
+                  >
+                    Ver mais ({sortedEventos.length - VISIBLE_EVENTS_COUNT} eventos anteriores)
+                  </button>
+                )}
+                {showAllEvents && sortedEventos.length > VISIBLE_EVENTS_COUNT && (
+                  <button
+                    onClick={() => setShowAllEvents(false)}
+                    className="text-sm font-medium text-muted-foreground hover:underline"
+                  >
+                    Mostrar menos
+                  </button>
+                )}
               </div>
             )}
           </InfoCard>
@@ -457,9 +494,7 @@ export function OSDetailPage() {
                   <tr className="font-semibold">
                     <td colSpan={4} className="pt-2 text-right">Subtotal:</td>
                     <td className="pt-2">
-                      {formatCurrency(
-                        itensList.reduce((s, i) => s + i.valorTotal, 0)
-                      )}
+                      {formatCurrency(itensList.reduce((s, i) => s + i.valorTotal, 0))}
                     </td>
                     <td />
                   </tr>
@@ -482,29 +517,14 @@ export function OSDetailPage() {
                 </tfoot>
               </table>
             )}
-
-            <div className="mt-3 flex gap-2">
-              <button
-                onClick={handleOpenDiscount}
-                disabled={isDiscountBlocked || isRestricted}
-                className="rounded-lg border px-3 py-1.5 text-xs font-medium hover:bg-accent disabled:opacity-50"
-              >
-                {hasDesconto ? 'Editar Desconto' : 'Adicionar Desconto'}
-              </button>
-              {hasDesconto && !isDiscountBlocked && !isRestricted && (
-                <button
-                  onClick={handleRemoveDiscount}
-                  className="rounded-lg border border-destructive px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10"
-                >
-                  Remover Desconto
-                </button>
-              )}
-            </div>
           </InfoCard>
         </div>
 
         <div className="space-y-4">
           <InfoCard title="Ações">
+            {actionError && (
+              <p className="mb-2 text-xs text-destructive">{actionError}</p>
+            )}
             <div className="space-y-2">
               <button
                 onClick={() => {
@@ -527,7 +547,7 @@ export function OSDetailPage() {
                 disabled={isTerminal}
                 className="w-full rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
               >
-                Adicionar Evento
+                Novo Andamento
               </button>
 
               <button
@@ -539,25 +559,70 @@ export function OSDetailPage() {
                 disabled={isItemBlocked}
                 className="w-full rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
               >
-                Adicionar Item
+                Adicionar Peças/Serviços
               </button>
+
+              <button
+                onClick={() => {
+                  setShowNewEquipmentForm(false);
+                  setEquipmentSelectModal(true);
+                }}
+                disabled={isTerminal}
+                className="w-full rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
+              >
+                Selecionar Equipamento
+              </button>
+
+              <button
+                onClick={() => {
+                  setHardwareText('');
+                  setHardwareError('');
+                  setHardwareModal(true);
+                }}
+                disabled={isTerminal}
+                className="w-full rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
+              >
+                Registrar Hardware
+              </button>
+
+              <button
+                onClick={() => setPaymentModal(true)}
+                disabled={isTerminal}
+                className="w-full rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
+              >
+                Pagamento
+              </button>
+
+              <button
+                onClick={handleOpenDiscount}
+                disabled={isDiscountBlocked || isRestricted}
+                className="w-full rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
+              >
+                {hasDesconto ? 'Editar Desconto' : 'Desconto'}
+              </button>
+              {hasDesconto && !isDiscountBlocked && !isRestricted && (
+                <button
+                  onClick={handleRemoveDiscount}
+                  className="w-full rounded-lg border border-destructive px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10"
+                >
+                  Remover Desconto
+                </button>
+              )}
             </div>
           </InfoCard>
 
           <InfoCard title="Documentos">
-            {actionError && (
-              <p className="mb-2 text-xs text-destructive">{actionError}</p>
-            )}
             <div className="space-y-2">
-              <PdfButton onClick={async () => { try { await window.osTech.report.generate('os', osId); setActionError(''); } catch (e: any) { setActionError(e?.message || 'Erro ao gerar PDF'); } }} label="OS PDF" />
-              <PdfButton onClick={async () => { try { await window.osTech.report.generate('laudo', osId); setActionError(''); } catch (e: any) { setActionError(e?.message || 'Erro ao gerar PDF'); } }} label="Laudo Técnico" />
-              <PdfButton onClick={async () => { try { await window.osTech.report.generate('inventario', osId); setActionError(''); } catch (e: any) { setActionError(e?.message || 'Erro ao gerar PDF'); } }} label="Inventário" />
-              <PdfButton onClick={async () => { try { await window.osTech.report.generate('recibo', osId); setActionError(''); } catch (e: any) { setActionError(e?.message || 'Erro ao gerar PDF'); } }} label="Recibo" />
+              <PdfButton onClick={async () => { try { await window.osTech.report.generate('os', osId); } catch (e: any) { setActionError(e?.message || 'Erro ao gerar PDF'); } }} label="OS PDF" />
+              <PdfButton onClick={async () => { try { await window.osTech.report.generate('laudo', osId); } catch (e: any) { setActionError(e?.message || 'Erro ao gerar PDF'); } }} label="Laudo Técnico" />
+              <PdfButton onClick={async () => { try { await window.osTech.report.generate('inventario', osId); } catch (e: any) { setActionError(e?.message || 'Erro ao gerar PDF'); } }} label="Inventário" />
+              <PdfButton onClick={async () => { try { await window.osTech.report.generate('recibo', osId); } catch (e: any) { setActionError(e?.message || 'Erro ao gerar PDF'); } }} label="Recibo" />
             </div>
           </InfoCard>
         </div>
       </div>
 
+      {/* Status Modal */}
       <Modal open={statusModal} title="Alterar Status" onClose={() => setStatusModal(false)}>
         <div className="space-y-4">
           <FormField label="Novo Status">
@@ -593,7 +658,8 @@ export function OSDetailPage() {
         </div>
       </Modal>
 
-      <Modal open={itemModal} title="Adicionar Item" onClose={() => setItemModal(false)} size="sm">
+      {/* Add Item Modal */}
+      <Modal open={itemModal} title="Adicionar Peça/Serviço" onClose={() => setItemModal(false)} size="sm">
         <div className="space-y-4">
           <FormField label="Tipo">
             <select
@@ -655,6 +721,7 @@ export function OSDetailPage() {
         </div>
       </Modal>
 
+      {/* Discount Modal */}
       <Modal open={discountModal} title="Desconto" onClose={() => setDiscountModal(false)} size="sm">
         <div className="space-y-4">
           <div className="flex gap-2">
@@ -741,15 +808,16 @@ export function OSDetailPage() {
         </div>
       </Modal>
 
-      <Modal open={eventModal} title="Adicionar Evento" onClose={() => setEventModal(false)}>
+      {/* Event Modal */}
+      <Modal open={eventModal} title="Novo Andamento" onClose={() => setEventModal(false)}>
         <div className="space-y-4">
-          <FormField label="Descrição do Evento">
+          <FormField label="Descrição do Andamento">
             <textarea
               value={eventDesc}
               onChange={(e) => setEventDesc(e.target.value)}
               className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               rows={4}
-              placeholder="Descreva o evento..."
+              placeholder="Descreva o andamento..."
             />
           </FormField>
           {actionError && <p className="text-sm text-destructive">{actionError}</p>}
@@ -768,6 +836,7 @@ export function OSDetailPage() {
         </div>
       </Modal>
 
+      {/* Hardware Modal */}
       <Modal open={hardwareModal} title="Registrar Hardware" onClose={() => setHardwareModal(false)} size="lg">
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
@@ -800,6 +869,95 @@ export function OSDetailPage() {
               {hardwareMutation.isPending ? 'Salvando...' : 'Salvar'}
             </button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Payment Modal */}
+      <Modal open={paymentModal} title="Forma de Pagamento" onClose={() => setPaymentModal(false)} size="sm">
+        <div className="space-y-3">
+          {FORMAS_PAGAMENTO.map((fp) => (
+            <button
+              key={fp.value}
+              onClick={() => paymentMutation.mutate(fp.value)}
+              disabled={isTerminal || isRestricted || paymentMutation.isPending}
+              className={`w-full rounded-lg border px-4 py-3 text-sm font-medium text-left transition-colors ${
+                osData.formaPagamento === fp.value
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'hover:bg-accent'
+              } disabled:opacity-50`}
+            >
+              {fp.label}
+            </button>
+          ))}
+          {osData.formaPagamento && !isTerminal && !isRestricted && (
+            <button
+              onClick={() => paymentMutation.mutate(null)}
+              disabled={paymentMutation.isPending}
+              className="w-full rounded-lg border border-destructive px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/10"
+            >
+              Remover Pagamento
+            </button>
+          )}
+        </div>
+      </Modal>
+
+      {/* Equipment Selection Modal */}
+      <Modal
+        open={equipmentSelectModal}
+        title="Selecionar Equipamento"
+        onClose={() => { setEquipmentSelectModal(false); setShowNewEquipmentForm(false); }}
+        size="lg"
+      >
+        <div className="space-y-4">
+          {!showNewEquipmentForm ? (
+            <>
+              {(clientEquipments as any[]).length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhum equipamento cadastrado para este cliente.</p>
+              ) : (
+                <div className="space-y-2">
+                  {(clientEquipments as any[]).map((eq) => (
+                    <button
+                      key={eq.id}
+                      onClick={() => equipmentMutation.mutate(eq.id)}
+                      disabled={equipmentMutation.isPending}
+                      className={`w-full rounded-lg border px-4 py-3 text-left transition-colors ${
+                        (osData as any).equipamentoId === eq.id
+                          ? 'border-primary bg-primary/10'
+                          : 'hover:bg-accent'
+                      } disabled:opacity-50`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-sm font-medium">{eq.marca} {eq.modelo}</span>
+                          <span className="ml-2 text-xs text-muted-foreground">({eq.tipo})</span>
+                        </div>
+                        <span className="text-xs font-mono font-medium bg-muted px-2 py-0.5 rounded">
+                          {eq.etiqueta}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={() => setShowNewEquipmentForm(true)}
+                className="w-full rounded-lg border border-dashed px-4 py-3 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              >
+                + Cadastrar Equipamento
+              </button>
+            </>
+          ) : (
+            <div className="space-y-4">
+              <EquipmentForm
+                clientId={clienteId}
+                onClose={() => setShowNewEquipmentForm(false)}
+                onSuccess={(newEq: any) => {
+                  equipmentMutation.mutate(newEq.id);
+                  queryClient.invalidateQueries({ queryKey: ['equipment-by-client', clienteId] });
+                }}
+              />
+            </div>
+          )}
         </div>
       </Modal>
     </div>

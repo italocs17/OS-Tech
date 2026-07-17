@@ -37,6 +37,11 @@ export class EmailNotificationService {
       const config = await this.configService.getConfig();
       if (!config) return;
 
+      const solicitacao = await prisma.emailSolicitacao.findFirst({
+        where: { osId },
+        orderBy: { dataRecebimento: 'asc' },
+      });
+
       const transport = this.buildTransport(config.email, config.appPassword);
 
       const statusLabel = STATUS_LABELS[os.status as StatusOS] || os.status;
@@ -55,12 +60,21 @@ export class EmailNotificationService {
         'OS.Tech - Assistencia Tecnica',
       ].join('\n');
 
-      await transport.sendMail({
+      const mailOptions: any = {
         from: `"OS.Tech" <${config.email}>`,
         to: recipient.email,
         subject,
         text: body,
-      });
+      };
+
+      if (solicitacao?.mensagemId) {
+        mailOptions.headers = {
+          'In-Reply-To': solicitacao.mensagemId,
+          'References': solicitacao.mensagemId,
+        };
+      }
+
+      await transport.sendMail(mailOptions);
 
       await registrar({
         nivel: 'INFO',
@@ -152,6 +166,15 @@ export class EmailNotificationService {
   private async getRecipientEmail(
     osId: number
   ): Promise<{ email: string; nome: string } | null> {
+    const os = await prisma.ordemServico.findUnique({
+      where: { id: osId },
+      include: { cliente: true, contato: true },
+    });
+
+    if (os?.contato?.email) {
+      return { email: os.contato.email, nome: os.contato.nome };
+    }
+
     const solicitacao = await prisma.emailSolicitacao.findFirst({
       where: { osId },
       include: { contato: true },
@@ -160,11 +183,6 @@ export class EmailNotificationService {
     if (solicitacao?.contato?.email) {
       return { email: solicitacao.contato.email, nome: solicitacao.contato.nome };
     }
-
-    const os = await prisma.ordemServico.findUnique({
-      where: { id: osId },
-      include: { cliente: true },
-    });
 
     if (os?.cliente?.email) {
       return { email: os.cliente.email, nome: os.cliente.nome };

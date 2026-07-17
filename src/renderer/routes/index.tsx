@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom';
 import { DashboardPage } from '../pages/Dashboard';
 import { ClientsPage } from '../pages/Clients';
 import { EquipmentPage } from '../pages/Equipment';
+import { ContactsPage } from '../pages/Contacts';
 import { OSPage } from '../pages/OS';
 import { OSDetailPage } from '../pages/OS/Detail';
 import { CatalogPage } from '../pages/Catalog';
@@ -18,6 +19,7 @@ export function AppRoutes() {
       <Route path="/" element={<DashboardPage />} />
       <Route path="/clients" element={<ClientsPage />} />
       <Route path="/equipment" element={<EquipmentPage />} />
+      <Route path="/contacts" element={<ContactsPage />} />
       <Route path="/os" element={<OSPage />} />
       <Route path="/os/:id" element={<OSDetailPage />} />
       <Route path="/catalog" element={<CatalogPage />} />

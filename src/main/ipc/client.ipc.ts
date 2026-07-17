@@ -29,4 +29,8 @@ export function registerClientIpcHandlers() {
   ipcMain.handle(IPC_CHANNELS.CLIENT.DELETE, async (_, id: number) => {
     return clientService.delete(id);
   });
+
+  ipcMain.handle(IPC_CHANNELS.CLIENT.SET_CONTATO_PADRAO, async (_, clienteId: number, contatoId: number) => {
+    return clientService.setContatoPadrao(clienteId, contatoId);
+  });
 }

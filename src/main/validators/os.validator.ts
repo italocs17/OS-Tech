@@ -13,6 +13,7 @@ import type { StatusOS } from '@shared/types/entities.types';
 export const createOSSchema = z.object({
   clienteId: z.number().int().positive('ID do cliente e obrigatorio'),
   equipamentoId: z.number().int().positive().optional(),
+  contatoId: z.number().int().positive().optional(),
   tipoAtendimento: z.enum(['INTERNO', 'EXTERNO']).optional(),
   observacoes: z.preprocess(
     (v) => (v === '' ? undefined : v),
@@ -29,9 +30,11 @@ export const updateOSSchema = z.object({
   dataPrevisao: z.date().optional(),
   dataConclusao: z.date().optional(),
   tipoAtendimento: z.enum(['INTERNO', 'EXTERNO']).optional(),
+  equipamentoId: z.number().int().positive().nullable().optional(),
+  contatoId: z.number().int().positive().nullable().optional(),
   desconto: z.number().min(0).nullable().optional(),
   descontoTipo: z.enum(['ABSOLUTO', 'PERCENTUAL']).optional(),
-  formaPagamento: z.enum(['PIX', 'ESPECIE', 'DEBITO', 'CREDITO']).optional(),
+  formaPagamento: z.enum(['CONTRATO', 'PIX', 'ESPECIE', 'DEBITO', 'CREDITO_A_VISTA', 'CREDITO_PARCELADO']).optional(),
 });
 
 // =============================================================================

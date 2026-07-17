@@ -43,6 +43,10 @@ export function registerEmailIpcHandlers() {
     return solicitacaoService.reject(id, usuarioId, motivo);
   });
 
+  ipcMain.handle(IPC_CHANNELS.EMAIL.CONCILIAR, async (_, solicitacaoOrigemId: number, solicitacaoDestinoId: number, usuarioId: number) => {
+    return solicitacaoService.conciliar(solicitacaoOrigemId, solicitacaoDestinoId, usuarioId);
+  });
+
   ipcMain.handle(IPC_CHANNELS.EMAIL.CONFIG_GET, async () => {
     return configService.getConfig();
   });

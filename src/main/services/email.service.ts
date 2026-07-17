@@ -86,6 +86,31 @@ export class EmailService {
               corpoTexto = '(Corpo nao disponivel)';
             }
 
+            const replyToId = fetchResult.envelope.inReplyTo || this.extractReferencesHeader(fetchResult.source);
+
+            if (replyToId) {
+              const originalSolicitacao = await this.repository.findByMensagemId(replyToId);
+              if (originalSolicitacao?.osId) {
+                try {
+                  await this.osService.addEvento({
+                    osId: originalSolicitacao.osId,
+                    usuarioId: 0,
+                    descricao: `[Reply - ${emailRemetente}] ${corpoTexto}`,
+                  });
+                  await registrar({
+                    nivel: 'INFO',
+                    categoria: 'OS',
+                    acao: 'EMAIL_REPLY_ADDED',
+                    descricao: `Reply de ${emailRemetente} adicionado como evento na OS #${originalSolicitacao.osId}`,
+                    dadosContexto: { osId: originalSolicitacao.osId, emailRemetente, replyToId },
+                  });
+                } catch (err: any) {
+                  erros.push(`Erro ao adicionar reply como evento: ${err.message}`);
+                }
+                continue;
+              }
+            }
+
             const contato = await this.contatoRepository.findByEmail(emailRemetente);
 
             const solicitacao = await this.repository.create({
@@ -163,6 +188,7 @@ export class EmailService {
     const os = await this.osService.create(
       {
         clienteId,
+        contatoId: solicitacao.contatoId || undefined,
         tipoAtendimento: 'INTERNO',
         observacoes,
       },
@@ -244,6 +270,19 @@ export class EmailService {
       return htmlMatch[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
     }
 
+    return null;
+  }
+
+  private extractReferencesHeader(source: any): string | null {
+    if (!source) return null;
+    try {
+      const raw = source.toString('utf8');
+      const refMatch = raw.match(/^References:\s*(.+)$/mi);
+      if (refMatch) {
+        const refs = refMatch[1].trim().split(/\s+/);
+        return refs[0] || null;
+      }
+    } catch {}
     return null;
   }
 }

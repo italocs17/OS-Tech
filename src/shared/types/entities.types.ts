@@ -94,7 +94,7 @@ export type StatusOS =
   | 'CANCELADA';
 
 export type TipoDesconto = 'ABSOLUTO' | 'PERCENTUAL';
-export type FormaPagamento = 'PIX' | 'ESPECIE' | 'DEBITO' | 'CREDITO';
+export type FormaPagamento = 'CONTRATO' | 'PIX' | 'ESPECIE' | 'DEBITO' | 'CREDITO_A_VISTA' | 'CREDITO_PARCELADO';
 export type TipoAtendimento = 'INTERNO' | 'EXTERNO';
 
 export interface OrdemServico {
@@ -116,6 +116,7 @@ export interface OrdemServico {
 export interface CreateOrdemServicoDTO {
   clienteId: number;
   equipamentoId?: number;
+  contatoId?: number;
   tipoAtendimento?: TipoAtendimento;
   observacoes?: string;
   dataPrevisao?: Date;
@@ -126,6 +127,8 @@ export interface UpdateOrdemServicoDTO {
   dataPrevisao?: Date;
   dataConclusao?: Date;
   tipoAtendimento?: TipoAtendimento;
+  equipamentoId?: number | null;
+  contatoId?: number | null;
   desconto?: number | null;
   descontoTipo?: TipoDesconto;
   formaPagamento?: FormaPagamento;

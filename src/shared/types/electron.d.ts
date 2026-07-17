@@ -11,6 +11,7 @@ export interface ClientAPI {
   create: (data: unknown) => Promise<unknown>;
   update: (id: number, data: unknown) => Promise<unknown>;
   delete: (id: number) => Promise<unknown>;
+  setContatoPadrao: (clienteId: number, contatoId: number) => Promise<unknown>;
 }
 
 export interface EquipmentAPI {
@@ -91,6 +92,7 @@ export interface EmailAPI {
   linkClient: (data: unknown) => Promise<unknown>;
   convertToOS: (data: unknown) => Promise<unknown>;
   reject: (id: number, usuarioId: number, motivo?: string) => Promise<unknown>;
+  conciliar: (solicitacaoOrigemId: number, solicitacaoDestinoId: number, usuarioId: number) => Promise<unknown>;
   configGet: () => Promise<unknown>;
   configSave: (config: unknown) => Promise<unknown>;
   listByStatus: (status: string) => Promise<unknown>;

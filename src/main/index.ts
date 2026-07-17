@@ -55,7 +55,7 @@ app.whenReady().then(async () => {
   }
 });
 
-const EMAIL_POLL_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const EMAIL_POLL_INTERVAL = 60 * 1000; // 60 seconds
 let emailPollTimer: ReturnType<typeof setInterval> | null = null;
 
 function startEmailPolling() {

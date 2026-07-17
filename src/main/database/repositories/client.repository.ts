@@ -15,7 +15,10 @@ export class ClienteRepository {
   }
 
   async findById(id: number) {
-    return prisma.cliente.findUnique({ where: { id } });
+    return prisma.cliente.findUnique({
+      where: { id },
+      include: { contatos: { where: { ativo: true }, orderBy: { nome: 'asc' } } },
+    });
   }
 
   async findByCpfCnpj(cpfCnpj: string) {

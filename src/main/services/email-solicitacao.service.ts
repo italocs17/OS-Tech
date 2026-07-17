@@ -71,6 +71,7 @@ export class EmailSolicitacaoService {
     const os = await this.osService.create(
       {
         clienteId: solicitacao.clienteId,
+        contatoId: solicitacao.contatoId || undefined,
         tipoAtendimento: validated.tipoAtendimento as any || 'INTERNO',
         observacoes: validated.observacoes || observacoes,
       },
@@ -124,5 +125,38 @@ export class EmailSolicitacaoService {
     });
 
     return updated;
+  }
+
+  async conciliar(solicitacaoOrigemId: number, solicitacaoDestinoId: number, usuarioId: number) {
+    const origem = await this.getById(solicitacaoOrigemId);
+    const destino = await this.getById(solicitacaoDestinoId);
+
+    if (!destino.osId) {
+      throw new Error('A solicitacao de destino nao esta vinculada a uma OS');
+    }
+
+    await this.osService.addEvento({
+      osId: destino.osId,
+      usuarioId,
+      descricao: `[Chamado conciliado - ${origem.emailRemetente}] ${origem.assunto}\n${origem.corpoTexto}`,
+    });
+
+    await this.repository.update(solicitacaoOrigemId, {
+      status: 'CONVERTIDO',
+      osId: destino.osId,
+      usuarioAprovadorId: usuarioId,
+      dataProcessamento: new Date(),
+    });
+
+    await registrar({
+      nivel: 'INFO',
+      categoria: 'OS',
+      acao: 'EMAIL_CONCILIAR',
+      descricao: `Solicitacao #${solicitacaoOrigemId} conciliada com solicitacao #${solicitacaoDestinoId} (OS #${destino.osId})`,
+      usuarioId,
+      dadosContexto: { origemId: solicitacaoOrigemId, destinoId: solicitacaoDestinoId, osId: destino.osId },
+    });
+
+    return { osId: destino.osId };
   }
 }

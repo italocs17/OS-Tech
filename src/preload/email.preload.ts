@@ -11,6 +11,8 @@ export const emailAPI = {
   convertToOS: (data: unknown) => ipcRenderer.invoke(IPC_CHANNELS.EMAIL.CONVERT_TO_OS, data),
   reject: (id: number, usuarioId: number, motivo?: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.EMAIL.REJECT, id, usuarioId, motivo),
+  conciliar: (solicitacaoOrigemId: number, solicitacaoDestinoId: number, usuarioId: number) =>
+    ipcRenderer.invoke(IPC_CHANNELS.EMAIL.CONCILIAR, solicitacaoOrigemId, solicitacaoDestinoId, usuarioId),
   configGet: () => ipcRenderer.invoke(IPC_CHANNELS.EMAIL.CONFIG_GET),
   configSave: (config: unknown) => ipcRenderer.invoke(IPC_CHANNELS.EMAIL.CONFIG_SAVE, config),
   listContatos: (clienteId: number) => ipcRenderer.invoke(IPC_CHANNELS.EMAIL.LIST_CONTATOS, clienteId),

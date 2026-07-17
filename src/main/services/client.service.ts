@@ -34,14 +34,18 @@ export class ClienteService {
     if (contatos && contatos.length > 0) {
       return prisma.$transaction(async (tx: any) => {
         const cliente = await tx.cliente.create({ data: validated });
+        let hasDefault = false;
         for (const contato of contatos) {
           if (contato.nome?.trim() && contato.email?.trim()) {
+            const isFirst = !hasDefault;
+            hasDefault = true;
             await tx.clienteContato.create({
               data: {
                 clienteId: cliente.id,
                 nome: contato.nome.trim(),
                 email: contato.email.trim().toLowerCase(),
                 telefone: contato.telefone?.trim() || null,
+                isPadrao: isFirst,
               },
             });
           }
@@ -67,5 +71,18 @@ export class ClienteService {
 
   async count() {
     return this.repository.count();
+  }
+
+  async setContatoPadrao(clienteId: number, contatoId: number) {
+    await prisma.$transaction(async (tx: any) => {
+      await tx.clienteContato.updateMany({
+        where: { clienteId, ativo: true },
+        data: { isPadrao: false },
+      });
+      await tx.clienteContato.update({
+        where: { id: contatoId },
+        data: { isPadrao: true },
+      });
+    });
   }
 }

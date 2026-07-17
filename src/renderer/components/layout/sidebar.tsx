@@ -14,23 +14,47 @@ interface MenuItem {
   perfis?: PerfilUsuario[];
 }
 
-const menuItems: MenuItem[] = [
+interface MenuGroup {
+  type: 'group';
+  label: string;
+  icon: string;
+  perfis?: PerfilUsuario[];
+  children: MenuItem[];
+}
+
+type MenuEntry = MenuItem | MenuGroup;
+
+const menuItems: MenuEntry[] = [
   { to: '/', label: 'Dashboard', icon: '📊' },
-  { to: '/clients', label: 'Clientes', icon: '👥', perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'] },
-  { to: '/equipment', label: 'Equipamentos', icon: '🖥️', perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'] },
+  {
+    type: 'group',
+    label: 'Cadastro',
+    icon: '📁',
+    perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'],
+    children: [
+      { to: '/clients', label: 'Clientes', icon: '👥', perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'] },
+      { to: '/equipment', label: 'Equipamentos', icon: '🖥️', perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'] },
+      { to: '/contacts', label: 'Contatos', icon: '📇', perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'] },
+      { to: '/catalog', label: 'Catálogo', icon: '📦' },
+      { to: '/users', label: 'Usuários', icon: '🔐', perfis: ['PROPRIETARIO', 'GESTOR'] },
+      { to: '/equipes', label: 'Equipes', icon: '🏢', perfis: ['PROPRIETARIO', 'GESTOR'] },
+    ],
+  },
   { to: '/os', label: 'Ordens de Serviço', icon: '📋' },
-  { to: '/catalog', label: 'Catálogo', icon: '📦' },
-  { to: '/users', label: 'Usuários', icon: '🔐', perfis: ['PROPRIETARIO', 'GESTOR'] },
-  { to: '/equipes', label: 'Equipes', icon: '🏢', perfis: ['PROPRIETARIO', 'GESTOR'] },
   { to: '/reports', label: 'Relatórios', icon: '📈', perfis: ['PROPRIETARIO', 'GESTOR'] },
   { to: '/backup', label: 'Backup', icon: '💾', perfis: ['PROPRIETARIO'] },
   { to: '/email-inbox', label: 'Chamados', icon: '💬', perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'] },
   { to: '/logs', label: 'Auditoria', icon: '📝', perfis: ['PROPRIETARIO', 'GESTOR'] },
 ];
 
+function isGroup(entry: MenuEntry): entry is MenuGroup {
+  return 'type' in entry && entry.type === 'group';
+}
+
 export function Sidebar() {
   const { user, logout } = useAuth();
   const [passwordModal, setPasswordModal] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({Cadastro: true});
 
   const { data: emailPendingCount } = useQuery({
     queryKey: ['email-pending-sidebar'],
@@ -38,9 +62,23 @@ export function Sidebar() {
     refetchInterval: 60000,
   });
 
-  const visibleItems = menuItems.filter((item) => {
+  const isItemVisible = (item: MenuItem) => {
     if (!item.perfis || !user) return true;
     return item.perfis.includes(user.perfil);
+  };
+
+  const isGroupVisible = (group: MenuGroup) => {
+    if (!group.perfis || !user) return true;
+    return group.perfis.includes(user.perfil);
+  };
+
+  const toggleGroup = (label: string) => {
+    setExpandedGroups((prev) => ({ ...prev, [label]: !prev[label] }));
+  };
+
+  const visibleItems = menuItems.filter((entry) => {
+    if (isGroup(entry)) return isGroupVisible(entry);
+    return isItemVisible(entry);
   });
 
   return (
@@ -49,30 +87,79 @@ export function Sidebar() {
         <span className="text-2xl">🔧</span>
         <h1 className="text-lg font-bold">OS.Tech</h1>
       </div>
-      <nav className="flex-1 space-y-1 p-4">
-        {visibleItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.to === '/'}
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-              )
-            }
-          >
-            <span>{item.icon}</span>
-            <span>{item.label}</span>
-            {item.to === '/email-inbox' && emailPendingCount && emailPendingCount > 0 && (
-              <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-bold text-destructive-foreground">
-                {emailPendingCount > 99 ? '99+' : emailPendingCount}
-              </span>
-            )}
-          </NavLink>
-        ))}
+      <nav className="flex-1 space-y-1 p-4 overflow-y-auto">
+        {visibleItems.map((entry) => {
+          if (isGroup(entry)) {
+            const visibleChildren = entry.children.filter(isItemVisible);
+            if (visibleChildren.length === 0) return null;
+            const isExpanded = expandedGroups[entry.label] ?? false;
+            return (
+              <div key={entry.label}>
+                <button
+                  onClick={() => toggleGroup(entry.label)}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                >
+                  <span>{entry.icon}</span>
+                  <span className="flex-1 text-left">{entry.label}</span>
+                  <svg
+                    className={cn('h-4 w-4 transition-transform', isExpanded && 'rotate-90')}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+                {isExpanded && (
+                  <div className="ml-4 space-y-1">
+                    {visibleChildren.map((child) => (
+                      <NavLink
+                        key={child.to}
+                        to={child.to}
+                        className={({ isActive }) =>
+                          cn(
+                            'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                            isActive
+                              ? 'bg-primary text-primary-foreground'
+                              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                          )
+                        }
+                      >
+                        <span>{child.icon}</span>
+                        <span>{child.label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          return (
+            <NavLink
+              key={entry.to}
+              to={entry.to}
+              end={entry.to === '/'}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                )
+              }
+            >
+              <span>{entry.icon}</span>
+              <span>{entry.label}</span>
+              {entry.to === '/email-inbox' && emailPendingCount && emailPendingCount > 0 && (
+                <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-bold text-destructive-foreground">
+                  {emailPendingCount > 99 ? '99+' : emailPendingCount}
+                </span>
+              )}
+            </NavLink>
+          );
+        })}
       </nav>
       <div className="border-t p-4 space-y-2">
         <p className="text-xs text-muted-foreground">

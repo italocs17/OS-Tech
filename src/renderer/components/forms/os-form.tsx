@@ -21,6 +21,7 @@ export function OSForm({ onClose }: OSFormProps) {
 
   const [clienteId, setClienteId] = useState(0);
   const [equipamentoId, setEquipamentoId] = useState(0);
+  const [contatoId, setContatoId] = useState(0);
   const [tipoAtendimento, setTipoAtendimento] = useState<TipoAtendimento>('INTERNO');
   const [observacoes, setObservacoes] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -29,6 +30,12 @@ export function OSForm({ onClose }: OSFormProps) {
   const { data: equipments } = useQuery({
     queryKey: ['equipment-by-client', clienteId],
     queryFn: () => window.osTech.equipment.listByClient(clienteId),
+    enabled: clienteId > 0,
+  });
+
+  const { data: contatos } = useQuery({
+    queryKey: ['contatos-by-client', clienteId],
+    queryFn: () => window.osTech.email.listContatos(clienteId),
     enabled: clienteId > 0,
   });
 
@@ -65,6 +72,7 @@ export function OSForm({ onClose }: OSFormProps) {
       window.osTech.os.create({
         clienteId,
         equipamentoId: equipamentoId || undefined,
+        contatoId: contatoId || undefined,
         tipoAtendimento,
         observacoes: observacoes || undefined,
       }, user!.id),
@@ -113,6 +121,7 @@ export function OSForm({ onClose }: OSFormProps) {
           onChange={(e) => {
             setClienteId(Number(e.target.value));
             setEquipamentoId(0);
+            setContatoId(0);
           }}
           className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         >
@@ -138,6 +147,24 @@ export function OSForm({ onClose }: OSFormProps) {
           {equipList.map((e) => (
             <option key={e.id} value={e.id}>
               {e.etiqueta} - {e.marca} {e.modelo}
+            </option>
+          ))}
+        </select>
+      </FormField>
+
+      <FormField label="Contato">
+        <select
+          value={contatoId}
+          onChange={(e) => setContatoId(Number(e.target.value))}
+          className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          disabled={!clienteId}
+        >
+          <option value={0}>
+            {clienteId ? 'Nenhum contato' : 'Primeiro selecione um cliente'}
+          </option>
+          {(Array.isArray(contatos) ? contatos : []).map((c: any) => (
+            <option key={c.id} value={c.id}>
+              {c.nome} - {c.email}
             </option>
           ))}
         </select>

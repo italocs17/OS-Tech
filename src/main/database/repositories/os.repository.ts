@@ -25,9 +25,15 @@ export class OrdemServicoRepository {
       include: {
         cliente: true,
         equipamento: true,
+        contato: true,
         eventos: { orderBy: { dataHora: 'asc' } },
         itens: true,
         inventarios: true,
+        emailSolicitacao: {
+          include: { contato: true },
+          orderBy: { dataRecebimento: 'asc' },
+          take: 1,
+        },
       },
     });
   }

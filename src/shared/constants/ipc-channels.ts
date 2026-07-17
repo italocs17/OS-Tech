@@ -11,6 +11,7 @@ export const IPC_CHANNELS = {
     CREATE: 'client:create',
     UPDATE: 'client:update',
     DELETE: 'client:delete',
+    SET_CONTATO_PADRAO: 'client:set-contato-padrao',
   },
   EQUIPMENT: {
     LIST: 'equipment:list',
@@ -101,6 +102,7 @@ export const IPC_CHANNELS = {
     LINK_CLIENT: 'email:link-client',
     CONVERT_TO_OS: 'email:convert-to-os',
     REJECT: 'email:reject',
+    CONCILIAR: 'email:conciliar',
     CONFIG_GET: 'email:config-get',
     CONFIG_SAVE: 'email:config-save',
     LIST_BY_STATUS: 'email:list-by-status',

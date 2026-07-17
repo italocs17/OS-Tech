@@ -13,4 +13,6 @@ export const clientAPI = {
   update: (id: number, data: unknown) =>
     ipcRenderer.invoke(IPC_CHANNELS.CLIENT.UPDATE, id, data),
   delete: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.CLIENT.DELETE, id),
+  setContatoPadrao: (clienteId: number, contatoId: number) =>
+    ipcRenderer.invoke(IPC_CHANNELS.CLIENT.SET_CONTATO_PADRAO, clienteId, contatoId),
 };

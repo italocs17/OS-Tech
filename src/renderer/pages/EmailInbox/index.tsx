@@ -9,6 +9,7 @@ import { EmailDetail } from './components/email-detail';
 import { LinkClientModal } from './components/link-client-modal';
 import { ConvertModal } from './components/convert-modal';
 import { ConfigModal } from './components/config-modal';
+import { ConciliarModal } from './components/conciliar-modal';
 
 type TabType = 'aguardando' | 'nao-cadastrados' | 'convertidos' | 'rejeitados';
 
@@ -45,6 +46,8 @@ export function EmailInboxPage() {
   const [convertingAssunto, setConvertingAssunto] = useState('');
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const [checkResult, setCheckResult] = useState<string | null>(null);
+  const [conciliarModalOpen, setConciliarModalOpen] = useState(false);
+  const [conciliaringId, setConciliaringId] = useState<number | null>(null);
 
   const { data: pendingCount } = useQuery({
     queryKey: ['email-pending'],
@@ -129,6 +132,11 @@ export function EmailInboxPage() {
     }
   };
 
+  const handleConciliar = (id: number) => {
+    setConciliaringId(id);
+    setConciliarModalOpen(true);
+  };
+
   const handleConvertSuccess = (osId: number) => {
     navigate(`/os/${osId}`);
   };
@@ -197,6 +205,7 @@ export function EmailInboxPage() {
               onLinkClient={handleLinkClient}
               onConvert={handleConvert}
               onReject={handleReject}
+              onConciliar={handleConciliar}
             />
           ))
         )}
@@ -230,6 +239,14 @@ export function EmailInboxPage() {
         open={configModalOpen}
         onClose={() => setConfigModalOpen(false)}
       />
+
+      {conciliaringId && (
+        <ConciliarModal
+          solicitacaoId={conciliaringId}
+          open={conciliarModalOpen}
+          onClose={() => { setConciliarModalOpen(false); setConciliaringId(null); }}
+        />
+      )}
     </div>
   );
 }

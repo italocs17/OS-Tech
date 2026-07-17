@@ -6,10 +6,12 @@ import type { Equipamento, CreateEquipamentoDTO, UpdateEquipamentoDTO, Cliente }
 
 interface EquipmentFormProps {
   equipment?: Equipamento;
+  clientId?: number;
   onClose: () => void;
+  onSuccess?: (equipment: Equipamento) => void;
 }
 
-export function EquipmentForm({ equipment, onClose }: EquipmentFormProps) {
+export function EquipmentForm({ equipment, clientId, onClose, onSuccess }: EquipmentFormProps) {
   const queryClient = useQueryClient();
   const isEditing = !!equipment;
 
@@ -21,7 +23,7 @@ export function EquipmentForm({ equipment, onClose }: EquipmentFormProps) {
   const clientList = Array.isArray(clients) ? (clients as Cliente[]) : [];
 
   const [form, setForm] = useState({
-    clienteId: equipment?.clienteId ?? 0,
+    clienteId: equipment?.clienteId ?? clientId ?? 0,
     tipo: equipment?.tipo ?? '',
     marca: equipment?.marca ?? '',
     modelo: equipment?.modelo ?? '',
@@ -39,8 +41,11 @@ export function EquipmentForm({ equipment, onClose }: EquipmentFormProps) {
       }
       return window.osTech.equipment.create(form as CreateEquipamentoDTO);
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
+      if (onSuccess) {
+        onSuccess(data);
+      }
       onClose();
     },
     onError: (err: Error) => {
@@ -77,7 +82,7 @@ export function EquipmentForm({ equipment, onClose }: EquipmentFormProps) {
             value={form.clienteId}
             onChange={(e) => set('clienteId', Number(e.target.value))}
             className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            disabled={isEditing}
+            disabled={isEditing || !!clientId}
           >
             <option value={0}>Selecione...</option>
             {clientList.map((c) => (

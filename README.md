@@ -2,7 +2,7 @@
 
 Sistema desktop (Electron) 100% offline para gestão de assistência técnica de computadores: cadastro de clientes, equipamentos, ordens de serviço com máquina de status, inventário de hardware (manual), geração de PDFs, backup/restore e logs de auditoria.
 
-**Versão atual:** 2.3.0
+**Versão atual:** 2.3.1
 
 ---
 
@@ -139,14 +139,14 @@ ABERTA → EM_DIAGNOSTICO → AGUARDANDO_APROVACAO → AGUARDANDO_PECA → EM_EX
 | **UsuarioEquipe** | Usuario ↔ Equipe (N:N) |
 
 ### Enums (8)
-`StatusOS` (8), `PerfilUsuario` (4), `TipoItem`, `TipoDesconto`, `TipoAtendimento`, `FormaPagamento`, `NivelLog`, `CategoriaLog`
+`StatusOS` (8), `PerfilUsuario` (4), `TipoItem`, `TipoDesconto`, `TipoAtendimento`, `FormaPagamento` (7 valores), `NivelLog`, `CategoriaLog`
 
 ---
 
 ## APIs Expostas (`window.osTech`)
 
 ```typescript
-client:           list, get, create, update, delete
+client:           list, get, create, update, delete, setContatoPadrao
 equipment:        list, listByClient, get, getByTag, create, update, delete
 os:               list, listByClient, listByPeriod, listByEquipamento, get, create,
                   update, delete, changeStatus, addEvent, addItem, removeItem,
@@ -164,7 +164,8 @@ equipe:           list, get, create, update, delete, addUsuario, removeUsuario, 
 peca:             list, get, create, update, delete
 email:            list, get, checkMail, linkClient, convertToOS, reject,
                   configGet, configSave, listByStatus, countPending,
-                  listContatos, createContato, updateContato, deleteContato
+                  listContatos, createContato, updateContato, deleteContato,
+                  conciliar
 ```
 
 ---
@@ -200,9 +201,12 @@ email:            list, get, checkMail, linkClient, convertToOS, reject,
 - Itens (serviços/peças), eventos (histórico), desconto global (R$ ou %), forma de pagamento
 - Tipo de Atendimento: **Interno** (bancada/remoto) ou **Externo** (visita técnica)
 - Equipamento opcional na abertura da OS — opção **ND** (Não Determinado) para serviços remotos
+- Vinculação de contato do cliente (`contatoId` — FK para `ClienteContato`)
 - Atribuição de técnico (`tecnicoId`)
-- Eventos ordenados do mais antigo ao mais recente
-- Busca por nº OS ou cliente
+- Eventos ordenados do mais recente ao mais antigo (UI), cronológico em relatórios
+- Botões renomeados: "Novo Andamento", "Adicionar Peças/Serviços"
+- Novos botões no detalhe: Selecionar Equipamento, Pagamento, Desconto
+- Layout do detalhe: coluna esquerda rolável + coluna direita fixa
 
 ### Catálogo de Serviços e Peças
 - CRUD completo com abas: Serviços | Peças | Categorias | Subcategorias
@@ -228,6 +232,8 @@ email:            list, get, checkMail, linkClient, convertToOS, reject,
 - Conversão de e-mail em OS com dados pré-preenchidos
 - Rejeição de e-mail com motivo
 - Configuração de e-mail (host, porta, credenciais)
+- Detecção de respostas (In-Reply-To/References) — respostas vinculadas automaticamente à OS original
+- Conciliação de chamados duplicados (`email.conciliar`)
 
 ### Relatórios (PDF)
 | Relatório | Geração |
@@ -315,7 +321,10 @@ prisma/migrations/
 ├── 20260715000000_rename_cpf_to_cpfCnpj/              # Renomear campo CPF para CPF/CNPJ
 ├── 20260715195759_rename_cpf_to_cpf_cnpj/            # Renomear campo CPF para CPF/CNPJ
 ├── 20260716135156_add_categoria_servico/              # CategoriaServico + FK em Servico
-└── 20260716165301_add_subcategorias_equipes/          # SubcategoriaServico, Equipe, EquipeCategoria, UsuarioEquipe
+├── 20260716165301_add_subcategorias_equipes/          # SubcategoriaServico, Equipe, EquipeCategoria, UsuarioEquipe
+├── 20260717183443_add_formas_pagamento_v2/            # Novas formas de pagamento (CONTRATO, CREDITO_A_VISTA, CREDITO_PARCELADO)
+├── 20260717184543_add_contato_is_padrao/              # isPadrao em ClienteContato
+└── 20260717184933_add_os_contato_id/                  # contatoId em OrdemServico (FK ClienteContato)
 ```
 
 Após alterar `schema.prisma`:
@@ -328,7 +337,52 @@ npx prisma migrate dev --name <nome>
 
 ## Histórico de Versões
 
-### ✅ v2.3.0 (Atual)
+### ✅ v2.3.1 (Atual)
+
+**Geração de PDFs (robustez):**
+- Relatórios (OS, Laudo, Inventário, Recibo) não quebram mais quando OS não tem equipamento vinculado
+- Null-checks em todas as seções que dependem de `os.equipamento`
+
+**Sidebar reorganizada:**
+- Novo grupo colapsável "Cadastro" com: Clientes, Equipamentos, Contatos, Catálogo, Usuários, Equipes
+
+**Página de Contatos (nova):**
+- Rota `/contacts` — CRUD de contatos de clientes (ClienteContato)
+- Campo `isPadrao` — marca contato padrão do cliente
+- `client.setContatoPadrao()` — define contato padrão via IPC
+
+**Detalhe da OS (reescrito):**
+- Layout: coluna central rolável + coluna direita fixa (ações, pagamentos, itens)
+- Botões renomeados: "Novo Andamento", "Adicionar Peças/Serviços"
+- Novos botões: **Selecionar Equipamento** (modal com lista do cliente), **Pagamento** (6 opções), **Desconto** (movido do InfoCard para Actions)
+- Informações do contato vinculado exibidas (via `contatoId` ou fallback para `emailSolicitacao`)
+
+**Eventos (ordenação invertida na UI):**
+- Eventos exibidos do mais recente ao mais antigo na página de detalhe
+- Botão "Ver mais" — mostra 3 eventos por padrão, expande ao clicar
+- Relatórios mantêm ordem cronológica (ASC)
+
+**E-mail (polling + respostas):**
+- Intervalo de polling reduzido de 5 minutos para **60 segundos**
+- Detecção de respostas via cabeçalhos `In-Reply-To`/`References`
+- Respostas adicionadas automaticamente como eventos na OS original
+- Notificações de e-mail incluem `In-Reply-To`/`References` para rastreio
+
+**Conciliação de chamados:**
+- Novo método `email.conciliar()` — vincula chamado duplicado a OS existente
+- Modal "Conciliar Chamado" no inbox de e-mail
+- Canal IPC `email:conciliar` + preload
+
+**Contato vinculado à OS:**
+- Campo `contatoId` (nullable) em OrdemServico — FK para ClienteContato
+- Formulário de OS inclui dropdown de contatos do cliente
+- Conversão automática de e-mail vincula contato pelo e-mail do remetente
+- Serviço de notificação prioriza contato vinculado ao OS
+
+**Formas de Pagamento expandidas:**
+- `CONTRATO`, `PIX`, `ESPECIE`, `DEBITO`, `CREDITO_A_VISTA`, `CREDITO_PARCELADO`
+
+### ✅ v2.3.0
 
 **Subcategorias de Serviço:**
 - Novo modelo `SubcategoriaServico` com relação N:1 com `CategoriaServico`
@@ -350,6 +404,7 @@ npx prisma migrate dev --name <nome>
 - **Sidebar dinâmica**: itens de menu filtrados por perfil do usuário
   - PROPRIETÁRIO/GESTOR: acesso total
   - TÉCNICO/RECEPCIONISTA: apenas Dashboard, Equipamentos, OS, Catálogo, Chamados
+  - Grupo "Cadastro" colapsável: Clientes, Equipamentos, Contatos, Catálogo, Usuários, Equipes
 - **Formulário de OS**: categorias filtradas pela equipe do usuário
 - **Detalhe da OS**: controles de desconto e pagamento restritos para TECNICO/RECEPCIONISTA
 

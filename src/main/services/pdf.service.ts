@@ -267,11 +267,15 @@ export class PDFService {
     doc.fontSize(14).text('DADOS DO EQUIPAMENTO', { underline: true });
     doc.moveDown(0.5);
     doc.fontSize(11);
-    doc.text(`Etiqueta: ${os.equipamento.etiqueta}`);
-    doc.text(`Tipo: ${os.equipamento.tipo}`);
-    doc.text(`Marca: ${os.equipamento.marca}`);
-    doc.text(`Modelo: ${os.equipamento.modelo}`);
-    doc.text(`N Serie: ${os.equipamento.numeroSerie || '-'}`);
+    if (os.equipamento) {
+      doc.text(`Etiqueta: ${os.equipamento.etiqueta}`);
+      doc.text(`Tipo: ${os.equipamento.tipo}`);
+      doc.text(`Marca: ${os.equipamento.marca}`);
+      doc.text(`Modelo: ${os.equipamento.modelo}`);
+      doc.text(`N Serie: ${os.equipamento.numeroSerie || '-'}`);
+    } else {
+      doc.text('Equipamento: Nao vinculado');
+    }
     doc.moveDown(1);
 
     doc.fontSize(14).text('STATUS', { underline: true });
@@ -380,11 +384,15 @@ export class PDFService {
     doc.fontSize(14).text('EQUIPAMENTO', { underline: true });
     doc.moveDown(0.5);
     doc.fontSize(11);
-    doc.text(`Etiqueta: ${os.equipamento.etiqueta}`);
-    doc.text(`Tipo: ${os.equipamento.tipo}`);
-    doc.text(`Marca: ${os.equipamento.marca}`);
-    doc.text(`Modelo: ${os.equipamento.modelo}`);
-    doc.text(`N Serie: ${os.equipamento.numeroSerie || '-'}`);
+    if (os.equipamento) {
+      doc.text(`Etiqueta: ${os.equipamento.etiqueta}`);
+      doc.text(`Tipo: ${os.equipamento.tipo}`);
+      doc.text(`Marca: ${os.equipamento.marca}`);
+      doc.text(`Modelo: ${os.equipamento.modelo}`);
+      doc.text(`N Serie: ${os.equipamento.numeroSerie || '-'}`);
+    } else {
+      doc.text('Equipamento: Nao vinculado');
+    }
     doc.moveDown(1);
 
     if (os.inventario) {
@@ -473,8 +481,12 @@ export class PDFService {
     doc.moveDown(0.5);
     doc.fontSize(11);
     doc.text(`Cliente: ${os.cliente.nome}`);
-    doc.text(`Equipamento: ${os.equipamento.marca} ${os.equipamento.modelo}`);
-    doc.text(`Etiqueta: ${os.equipamento.etiqueta}`);
+    if (os.equipamento) {
+      doc.text(`Equipamento: ${os.equipamento.marca} ${os.equipamento.modelo}`);
+      doc.text(`Etiqueta: ${os.equipamento.etiqueta}`);
+    } else {
+      doc.text('Equipamento: Nao vinculado');
+    }
     doc.moveDown(1);
 
     for (let i = 0; i < inventarios.length; i++) {
@@ -638,10 +650,14 @@ export class PDFService {
     doc.fontSize(14).text('EQUIPAMENTO', { underline: true });
     doc.moveDown(0.5);
     doc.fontSize(11);
-    doc.text(`Tipo: ${os.equipamento.tipo}`);
-    doc.text(`Marca: ${os.equipamento.marca}`);
-    doc.text(`Modelo: ${os.equipamento.modelo}`);
-    doc.text(`Etiqueta: ${os.equipamento.etiqueta}`);
+    if (os.equipamento) {
+      doc.text(`Tipo: ${os.equipamento.tipo}`);
+      doc.text(`Marca: ${os.equipamento.marca}`);
+      doc.text(`Modelo: ${os.equipamento.modelo}`);
+      doc.text(`Etiqueta: ${os.equipamento.etiqueta}`);
+    } else {
+      doc.text('Equipamento: Nao vinculado');
+    }
     doc.moveDown(1);
 
     if (os.itens.length > 0) {
