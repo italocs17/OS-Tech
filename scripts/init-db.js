@@ -56,13 +56,24 @@ async function main() {
 
   for (const dir of dirs) {
     const sql = fs.readFileSync(path.join(migrationDir, dir, 'migration.sql'), 'utf-8');
-    const statements = sql
+    const cleaned = sql
+      .split('\n')
+      .filter((line) => !line.trim().startsWith('--'))
+      .join('\n');
+    const statements = cleaned
       .split(';')
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
 
     for (const stmt of statements) {
-      await prisma.$executeRawUnsafe(stmt);
+      const upper = stmt.trim().toUpperCase();
+      if (upper.startsWith('PRAGMA')) continue;
+      try {
+        await prisma.$executeRawUnsafe(stmt);
+      } catch (e) {
+        console.error(`Failed in migration [${dir}]: ${stmt.substring(0, 120)}...`);
+        throw e;
+      }
     }
   }
 
