@@ -6,6 +6,7 @@ import { LoadingSpinner } from '../../components/shared/loading-spinner';
 import { Modal } from '../../components/shared/modal';
 import { FormField } from '../../components/shared/form-field';
 import { SearchInput } from '../../components/shared/search-input';
+import { ToggleSwitch } from '../../components/shared/toggle-switch';
 import type { Usuario, PerfilUsuario, Equipe } from '@shared/types/entities.types';
 
 const PERFIS: PerfilUsuario[] = ['TECNICO', 'RECEPCIONISTA', 'PROPRIETARIO', 'GESTOR'];
@@ -29,8 +30,8 @@ export function UsersPage() {
     queryFn: () => window.osTech.user.list(),
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => window.osTech.user.delete(id),
+  const toggleAtivoMutation = useMutation({
+    mutationFn: async ({ id, ativo }: { id: number; ativo: boolean }) => window.osTech.user.update(id, { ativo }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
   });
 
@@ -51,17 +52,11 @@ export function UsersPage() {
       key: 'acoes',
       header: '',
       render: (item) => (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (confirm(`Excluir usuario ${item.nome}?`)) {
-              deleteMutation.mutate(item.id);
-            }
-          }}
-          className="text-sm text-destructive hover:underline"
-        >
-          Excluir
-        </button>
+        <ToggleSwitch
+          checked={item.ativo}
+          onChange={(ativo) => toggleAtivoMutation.mutate({ id: item.id, ativo })}
+          label={item.ativo ? 'Desativar usuario' : 'Ativar usuario'}
+        />
       ),
     },
   ];

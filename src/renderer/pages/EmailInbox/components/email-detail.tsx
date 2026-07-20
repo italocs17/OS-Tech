@@ -1,5 +1,13 @@
+import { useQuery } from '@tanstack/react-query';
 import { Modal } from '../../../components/shared/modal';
 import { formatDateTime } from '@/lib/utils';
+
+interface AnexoEmail {
+  id: number;
+  nomeArquivo: string;
+  tamanho: number;
+  mimeType: string | null;
+}
 
 interface EmailSolicitacaoDetail {
   id: number;
@@ -26,7 +34,19 @@ interface EmailDetailProps {
   onClose: () => void;
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export function EmailDetail({ item, open, onClose }: EmailDetailProps) {
+  const { data: anexos = [] } = useQuery({
+    queryKey: ['email-attachments', item?.id],
+    queryFn: () => window.osTech.email.listAttachments(item!.id) as Promise<AnexoEmail[]>,
+    enabled: open && !!item?.id,
+  });
+
   if (!item) return null;
 
   return (
@@ -81,6 +101,24 @@ export function EmailDetail({ item, open, onClose }: EmailDetailProps) {
             <pre className="whitespace-pre-wrap text-sm">{item.corpoTexto}</pre>
           </div>
         </div>
+
+        {anexos.length > 0 && (
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Anexos ({anexos.length})</label>
+            <div className="mt-1 space-y-1">
+              {anexos.map((anexo) => (
+                <div key={anexo.id} className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
+                  <span className="text-sm">📎</span>
+                  <span className="text-sm font-medium">{anexo.nomeArquivo}</span>
+                  <span className="text-xs text-muted-foreground">({formatFileSize(anexo.tamanho)})</span>
+                  {anexo.mimeType && (
+                    <span className="text-xs text-muted-foreground">{anexo.mimeType}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {item.observacoes && (
           <div>

@@ -132,6 +132,10 @@ export class PDFService {
     doc.moveDown(0.3);
     doc.fontSize(11);
     doc.text(`Status: ${status}`);
+    if (os.statusLogistico) {
+      const statusLogistico = os.statusLogistico.replace(/_/g, ' ');
+      doc.text(`Status Logistico: ${statusLogistico}`);
+    }
     doc.text(`Data de Entrada: ${new Date(os.dataEntrada).toLocaleDateString('pt-BR')}`);
     if (os.dataPrevisao)
       doc.text(`Previsao: ${new Date(os.dataPrevisao).toLocaleDateString('pt-BR')}`);
@@ -145,6 +149,8 @@ export class PDFService {
       doc.fontSize(11).text(os.observacoes);
       doc.moveDown(0.5);
     }
+
+    this.renderAnexos(doc, os.id);
 
     if (os.itens && os.itens.length > 0) {
       doc.fontSize(14).text('ITENS', { underline: true });
@@ -296,6 +302,8 @@ export class PDFService {
       doc.moveDown(1);
     }
 
+    this.renderAnexos(doc, os.id);
+
     if (os.itens.length > 0) {
       doc.fontSize(14).text('ITENS', { underline: true });
       doc.moveDown(0.5);
@@ -439,6 +447,8 @@ export class PDFService {
       doc.fontSize(11).text(os.observacoes);
       doc.moveDown(1);
     }
+
+    this.renderAnexos(doc, os.id);
 
     doc.moveDown(3);
     doc.fontSize(11).text('_________________________________', { align: 'center' });
@@ -707,6 +717,59 @@ export class PDFService {
     });
   }
 
+  async generateReciboRecebimento(osId: number, outputPathOverride?: string): Promise<string> {
+    const os = await prisma.ordemServico.findUnique({
+      where: { id: osId },
+      include: { cliente: true, equipamento: true },
+    });
+
+    if (!os) throw new Error('OS nao encontrada');
+
+    const doc = new PDFDocument({ size: 'A4', layout: 'portrait', margin: 50 });
+    const outputPath = outputPathOverride ?? this.getOutputPath(`Recibo_Recebimento_${os.numeroOS}.pdf`);
+    const writeStream = fs.createWriteStream(outputPath);
+
+    doc.pipe(writeStream);
+    this.setupFont(doc);
+    this.setupFooter(doc);
+
+    this.addHeader(doc, `RECIBO DE RECEBIMENTO - N ${os.numeroOS}`);
+
+    doc.fontSize(14).text('DADOS DO CLIENTE', { underline: true });
+    doc.moveDown(0.5);
+    doc.fontSize(11);
+    doc.text(`Nome: ${os.cliente.nome}`);
+    doc.text(`CPF/CNPJ: ${os.cliente.cpfCnpj}`);
+    doc.moveDown(1);
+
+    doc.fontSize(14).text('EQUIPAMENTO', { underline: true });
+    doc.moveDown(0.5);
+    doc.fontSize(11);
+    if (os.equipamento) {
+      doc.text(`Tipo: ${os.equipamento.tipo}`);
+      doc.text(`Marca: ${os.equipamento.marca}`);
+      doc.text(`Modelo: ${os.equipamento.modelo}`);
+      doc.text(`Etiqueta: ${os.equipamento.etiqueta}`);
+    } else {
+      doc.text('Equipamento: Nao vinculado');
+    }
+    doc.moveDown(1);
+
+    doc.fontSize(11).text(`Data de Recebimento: ${new Date().toLocaleString('pt-BR')}`);
+    doc.moveDown(3);
+
+    doc.fontSize(11).text('_________________________________', { align: 'center' });
+    doc.text('Assinatura do Tecnico', { align: 'center' });
+
+    this.finalizeFooter(doc);
+    doc.end();
+
+    return new Promise((resolve, reject) => {
+      writeStream.on('finish', () => resolve(outputPath));
+      writeStream.on('error', reject);
+    });
+  }
+
   // ===========================================================================
   // RELATORIOS DE LISTA COM MODO
   // ===========================================================================
@@ -769,7 +832,7 @@ export class PDFService {
     const osList = await this.queryOSListWithIncludes(
       {
         dataConclusao: { gte: inicio, lte: fim },
-        status: { in: ['CONCLUIDA', 'ENTREGUE'] },
+        status: { in: ['CONCLUIDA'] },
       },
       modo,
       { dataConclusao: 'desc' }
@@ -1317,6 +1380,31 @@ export class PDFService {
       return subtotal - os.desconto;
     }
     return subtotal;
+  }
+
+  private async renderAnexos(doc: PDFKit.PDFDocument, osId: number) {
+    try {
+      const solicitacoes = await prisma.emailSolicitacao.findMany({
+        where: { osId },
+        include: { anexos: true },
+      });
+
+      const allAnexos = solicitacoes.flatMap((s: any) => s.anexos);
+      if (allAnexos.length === 0) return;
+
+      doc.fontSize(14).text('ANEXOS', { underline: true });
+      doc.moveDown(0.3);
+      doc.fontSize(11);
+      allAnexos.forEach((anexo: any, idx: number) => {
+        const tamanho = anexo.tamanho < 1024 * 1024
+          ? `${(anexo.tamanho / 1024).toFixed(1)} KB`
+          : `${(anexo.tamanho / (1024 * 1024)).toFixed(1)} MB`;
+        doc.text(`${idx + 1}. ${anexo.nomeArquivo} (${tamanho})`);
+      });
+      doc.moveDown(0.5);
+    } catch {
+      // Silently skip if anexos table doesn't exist yet
+    }
   }
 
   private formatBRL(value: number): string {

@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import type { StatusOS } from '@shared/types/entities.types';
+import type { StatusOS, StatusLogistico } from '@shared/types/entities.types';
 
 // =============================================================================
 // OS
@@ -14,6 +14,7 @@ export const createOSSchema = z.object({
   clienteId: z.number().int().positive('ID do cliente e obrigatorio'),
   equipamentoId: z.number().int().positive().optional(),
   contatoId: z.number().int().positive().optional(),
+  categoriaServicoId: z.number().int().positive('Categoria do servico e obrigatoria'),
   tipoAtendimento: z.enum(['INTERNO', 'EXTERNO']).optional(),
   observacoes: z.preprocess(
     (v) => (v === '' ? undefined : v),
@@ -32,23 +33,21 @@ export const updateOSSchema = z.object({
   tipoAtendimento: z.enum(['INTERNO', 'EXTERNO']).optional(),
   equipamentoId: z.number().int().positive().nullable().optional(),
   contatoId: z.number().int().positive().nullable().optional(),
+  categoriaServicoId: z.number().int().positive().nullable().optional(),
   desconto: z.number().min(0).nullable().optional(),
   descontoTipo: z.enum(['ABSOLUTO', 'PERCENTUAL']).optional(),
   formaPagamento: z.enum(['CONTRATO', 'PIX', 'ESPECIE', 'DEBITO', 'CREDITO_A_VISTA', 'CREDITO_PARCELADO']).optional(),
 });
 
 // =============================================================================
-// STATUS
+// STATUS TECNICO
 // =============================================================================
 
 const STATUS_OS: StatusOS[] = [
-  'ABERTA',
-  'EM_DIAGNOSTICO',
-  'AGUARDANDO_APROVACAO',
-  'AGUARDANDO_PECA',
-  'EM_EXECUCAO',
+  'AGUARDANDO_ATENDIMENTO',
+  'EM_ATENDIMENTO',
+  'PAUSADO',
   'CONCLUIDA',
-  'ENTREGUE',
   'CANCELADA',
 ];
 
@@ -59,24 +58,18 @@ export const changeStatusSchema = z.object({
 });
 
 /**
- * Mapa de transicoes permitidas de status.
- * ABERTA -> [EM_DIAGNOSTICO, CANCELADA]
- * EM_DIAGNOSTICO -> [AGUARDANDO_APROVACAO, CANCELADA]
- * AGUARDANDO_APROVACAO -> [AGUARDANDO_PECA, EM_EXECUCAO, CANCELADA]
- * AGUARDANDO_PECA -> [EM_EXECUCAO, CANCELADA]
- * EM_EXECUCAO -> [CONCLUIDA, CANCELADA]
- * CONCLUIDA -> [ENTREGUE, CANCELADA]
- * ENTREGUE -> []
+ * Mapa de transicoes permitidas de status tecnico.
+ * AGUARDANDO_ATENDIMENTO -> [EM_ATENDIMENTO, CANCELADA]
+ * EM_ATENDIMENTO -> [PAUSADO, CONCLUIDA, CANCELADA]
+ * PAUSADO -> [EM_ATENDIMENTO, CANCELADA]
+ * CONCLUIDA -> []
  * CANCELADA -> []
  */
 const TRANSICOES_PERMITIDAS: Record<StatusOS, StatusOS[]> = {
-  ABERTA: ['EM_DIAGNOSTICO', 'CANCELADA'],
-  EM_DIAGNOSTICO: ['AGUARDANDO_APROVACAO', 'CANCELADA'],
-  AGUARDANDO_APROVACAO: ['AGUARDANDO_PECA', 'EM_EXECUCAO', 'CANCELADA'],
-  AGUARDANDO_PECA: ['EM_EXECUCAO', 'CANCELADA'],
-  EM_EXECUCAO: ['CONCLUIDA', 'CANCELADA'],
-  CONCLUIDA: ['ENTREGUE', 'CANCELADA'],
-  ENTREGUE: [],
+  AGUARDANDO_ATENDIMENTO: ['EM_ATENDIMENTO', 'CANCELADA'],
+  EM_ATENDIMENTO: ['PAUSADO', 'CONCLUIDA', 'CANCELADA'],
+  PAUSADO: ['EM_ATENDIMENTO', 'CANCELADA'],
+  CONCLUIDA: [],
   CANCELADA: [],
 };
 
@@ -88,6 +81,51 @@ export function validarTransicaoStatus(
   if (!permitidos) return false;
   return permitidos.includes(novoStatus);
 }
+
+// =============================================================================
+// STATUS LOGISTICO
+// =============================================================================
+
+const STATUS_LOGISTICO: StatusLogistico[] = [
+  'PENDENTE',
+  'RECEBIDO',
+  'ENTREGUE',
+];
+
+export const changeStatusLogisticoSchema = z.object({
+  status: z.enum(STATUS_LOGISTICO, {
+    message: 'Status logistico invalido',
+  }),
+});
+
+/**
+ * Mapa de transicoes permitidas de status logistico.
+ * PENDENTE -> [RECEBIDO]
+ * RECEBIDO -> [ENTREGUE]
+ * ENTREGUE -> []
+ */
+const TRANSICOES_LOGISTICAS: Record<StatusLogistico, StatusLogistico[]> = {
+  PENDENTE: ['RECEBIDO'],
+  RECEBIDO: ['ENTREGUE'],
+  ENTREGUE: [],
+};
+
+export function validarTransicaoLogistica(
+  statusAtual: StatusLogistico,
+  novoStatus: StatusLogistico
+): boolean {
+  const permitidos = TRANSICOES_LOGISTICAS[statusAtual];
+  if (!permitidos) return false;
+  return permitidos.includes(novoStatus);
+}
+
+// =============================================================================
+// PAUSAR / RETOMAR
+// =============================================================================
+
+export const pausarRetomarSchema = z.object({
+  justificativa: z.string().min(3, 'Justificativa e obrigatoria (minimo 3 caracteres)'),
+});
 
 // =============================================================================
 // EVENTO
@@ -124,5 +162,7 @@ export const createItemOSSchema = z.object({
 export type CreateOSInput = z.infer<typeof createOSSchema>;
 export type UpdateOSInput = z.infer<typeof updateOSSchema>;
 export type ChangeStatusInput = z.infer<typeof changeStatusSchema>;
+export type ChangeStatusLogisticoInput = z.infer<typeof changeStatusLogisticoSchema>;
+export type PausarRetomarInput = z.infer<typeof pausarRetomarSchema>;
 export type CreateEventoInput = z.infer<typeof createEventoSchema>;
 export type CreateItemOSInput = z.infer<typeof createItemOSSchema>;

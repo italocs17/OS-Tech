@@ -54,6 +54,22 @@ export class ClienteService {
       });
     }
 
+    if (validated.email?.trim()) {
+      return prisma.$transaction(async (tx: any) => {
+        const cliente = await tx.cliente.create({ data: validated });
+        await tx.clienteContato.create({
+          data: {
+            clienteId: cliente.id,
+            nome: validated.nome.trim(),
+            email: validated.email!.trim().toLowerCase(),
+            telefone: validated.telefone?.trim() || null,
+            isPadrao: true,
+          },
+        });
+        return cliente;
+      });
+    }
+
     return this.repository.create(validated);
   }
 

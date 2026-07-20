@@ -6,6 +6,7 @@ import { LoadingSpinner } from '../../components/shared/loading-spinner';
 import { Modal } from '../../components/shared/modal';
 import { FormField } from '../../components/shared/form-field';
 import { SearchInput } from '../../components/shared/search-input';
+import { ToggleSwitch } from '../../components/shared/toggle-switch';
 import type {
   Equipe, CategoriaServico, Usuario,
   CreateEquipeDTO, UpdateEquipeDTO,
@@ -41,8 +42,8 @@ export function TeamsPage() {
   const equipesData = Array.isArray(equipes) ? (equipes as EquipeRow[]) : [];
   const usuariosData = Array.isArray(usuarios) ? (usuarios as Usuario[]) : [];
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => window.osTech.equipe.delete(id),
+  const toggleAtivoMutation = useMutation({
+    mutationFn: async ({ id, ativo }: { id: number; ativo: boolean }) => window.osTech.equipe.update(id, { ativo }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['equipes'] }),
   });
 
@@ -69,17 +70,11 @@ export function TeamsPage() {
       key: 'acoes',
       header: '',
       render: (item) => (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (confirm(`Excluir equipe ${item.nome}?`)) {
-              deleteMutation.mutate(item.id);
-            }
-          }}
-          className="text-sm text-destructive hover:underline"
-        >
-          Excluir
-        </button>
+        <ToggleSwitch
+          checked={item.ativo}
+          onChange={(ativo) => toggleAtivoMutation.mutate({ id: item.id, ativo })}
+          label={item.ativo ? 'Desativar equipe' : 'Ativar equipe'}
+        />
       ),
     },
   ];

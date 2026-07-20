@@ -65,6 +65,36 @@ export function registerOSIpcHandlers() {
   );
 
   // ---------------------------------------------------------------------------
+  // PAUSAR (id + justificativa + usuarioId)
+  // ---------------------------------------------------------------------------
+  ipcMain.handle(
+    IPC_CHANNELS.OS.PAUSAR,
+    async (_, id: number, justificativa: string, usuarioId: number) => {
+      return osService.pausar(id, justificativa, usuarioId);
+    }
+  );
+
+  // ---------------------------------------------------------------------------
+  // RETOMAR (id + justificativa + usuarioId)
+  // ---------------------------------------------------------------------------
+  ipcMain.handle(
+    IPC_CHANNELS.OS.RETOMAR,
+    async (_, id: number, justificativa: string, usuarioId: number) => {
+      return osService.retomar(id, justificativa, usuarioId);
+    }
+  );
+
+  // ---------------------------------------------------------------------------
+  // CHANGE_LOGISTICO_STATUS (id + status + usuarioId)
+  // ---------------------------------------------------------------------------
+  ipcMain.handle(
+    IPC_CHANNELS.OS.CHANGE_LOGISTICO_STATUS,
+    async (_, id: number, status: string, usuarioId: number) => {
+      return osService.changeStatusLogistico(id, status as any, usuarioId);
+    }
+  );
+
+  // ---------------------------------------------------------------------------
   // ADD_EVENT
   // ---------------------------------------------------------------------------
   ipcMain.handle(IPC_CHANNELS.OS.ADD_EVENT, async (_, data) => {

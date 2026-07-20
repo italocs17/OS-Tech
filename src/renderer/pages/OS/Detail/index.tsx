@@ -9,11 +9,12 @@ import { Modal } from '../../../components/shared/modal';
 import { FormField } from '../../../components/shared/form-field';
 import { CurrencyInput } from '../../../components/shared/currency-input';
 import { formatDate, formatDateTime, formatCurrency, formatCPF_CNPJ, formatPhone } from '../../../lib/utils';
-import { STATUS_OS } from '../../../lib/constants';
+import { STATUS_OS, STATUS_LOGISTICO } from '../../../lib/constants';
 import { EquipmentForm } from '../../../components/forms/equipment-form';
 import type {
   OrdemServico, EventoOS, ItemOS, TipoItem,
   TipoDesconto, FormaPagamento, TipoAtendimento, InventarioHardware,
+  StatusOS, StatusLogistico,
 } from '@shared/types/entities.types';
 
 const FORMAS_PAGAMENTO: { value: FormaPagamento; label: string }[] = [
@@ -65,6 +66,10 @@ export function OSDetailPage() {
   const [showNewEquipmentForm, setShowNewEquipmentForm] = useState(false);
 
   const [actionError, setActionError] = useState('');
+
+  const [pausarModal, setPausarModal] = useState(false);
+  const [retomarModal, setRetomarModal] = useState(false);
+  const [justificativa, setJustificativa] = useState('');
 
   const { data: os, isLoading } = useQuery({
     queryKey: ['os', osId],
@@ -190,11 +195,47 @@ export function OSDetailPage() {
   const equipmentMutation = useMutation({
     mutationFn: (equipamentoId: number) =>
       window.osTech.os.update(osId, { equipamentoId }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['os', osId] });
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ['os', osId] });
+      queryClient.invalidateQueries({ queryKey: ['os-list'] });
       setEquipmentSelectModal(false);
       setShowNewEquipmentForm(false);
     },
+  });
+
+  const pausarMutation = useMutation({
+    mutationFn: () => window.osTech.os.pausar(osId, justificativa, user!.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['os', osId] });
+      queryClient.invalidateQueries({ queryKey: ['os-list'] });
+      setPausarModal(false);
+      setJustificativa('');
+      setActionError('');
+    },
+    onError: (err: Error) => setActionError(err.message),
+  });
+
+  const retomarMutation = useMutation({
+    mutationFn: () => window.osTech.os.retomar(osId, justificativa, user!.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['os', osId] });
+      queryClient.invalidateQueries({ queryKey: ['os-list'] });
+      setRetomarModal(false);
+      setJustificativa('');
+      setActionError('');
+    },
+    onError: (err: Error) => setActionError(err.message),
+  });
+
+  const logisticoMutation = useMutation({
+    mutationFn: (status: StatusLogistico) =>
+      window.osTech.os.changeLogisticoStatus(osId, status, user!.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['os', osId] });
+      queryClient.invalidateQueries({ queryKey: ['os-list'] });
+      setActionError('');
+    },
+    onError: (err: Error) => setActionError(err.message),
   });
 
   const hardwareMutation = useMutation({
@@ -223,11 +264,20 @@ export function OSDetailPage() {
   if (isLoading) return <LoadingSpinner />;
   if (!osData) return <p className="p-6 text-muted-foreground">OS não encontrada</p>;
 
-  const isTerminal = ['ENTREGUE', 'CANCELADA'].includes(osData.status);
-  const isItemBlocked = ['CONCLUIDA', 'ENTREGUE', 'CANCELADA'].includes(osData.status);
-  const isDiscountBlocked = ['ENTREGUE', 'CANCELADA'].includes(osData.status);
+  const isTerminal = ['CONCLUIDA', 'CANCELADA'].includes(osData.status);
+  const isItemBlocked = ['CONCLUIDA', 'CANCELADA'].includes(osData.status);
+  const isDiscountBlocked = ['CONCLUIDA', 'CANCELADA'].includes(osData.status);
   const canConcluir = selectedStatus !== 'CONCLUIDA' || itensList.length > 0;
   const hasDesconto = osData.desconto != null && osData.desconto > 0;
+
+  const TRANSICOES_PERMITIDAS: Record<string, string[]> = {
+    AGUARDANDO_ATENDIMENTO: ['EM_ATENDIMENTO', 'CANCELADA'],
+    EM_ATENDIMENTO: ['PAUSADO', 'CONCLUIDA', 'CANCELADA'],
+    PAUSADO: ['EM_ATENDIMENTO', 'CANCELADA'],
+    CONCLUIDA: [],
+    CANCELADA: [],
+  };
+  const statusPermitidos = TRANSICOES_PERMITIDAS[osData.status] || [];
 
   const sortedEventos = [...eventosList].sort(
     (a, b) => new Date(b.dataHora).getTime() - new Date(a.dataHora).getTime()
@@ -243,6 +293,9 @@ export function OSDetailPage() {
         description={
           <div className="flex items-center gap-2">
             <StatusBadge status={osData.status} />
+            {osData.statusLogistico && (
+              <StatusBadge status={osData.statusLogistico} />
+            )}
             <span className="text-muted-foreground">
               Aberta em {formatDate(osData.dataEntrada)}
             </span>
@@ -327,6 +380,12 @@ export function OSDetailPage() {
                   <span className="text-muted-foreground">Atendimento:</span>
                   <span className="ml-1 font-medium">
                     {osData.tipoAtendimento === 'INTERNO' ? 'Interno (Bancada / Remoto)' : 'Externo (Visita Técnica)'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Categoria:</span>
+                  <span className="ml-1 font-medium">
+                    {(osData as any).categoriaServico?.nome ?? '-'}
                   </span>
                 </div>
                 <div>
@@ -538,6 +597,32 @@ export function OSDetailPage() {
                 Alterar Status
               </button>
 
+              {osData.status === 'EM_ATENDIMENTO' && (
+                <button
+                  onClick={() => {
+                    setJustificativa('');
+                    setActionError('');
+                    setPausarModal(true);
+                  }}
+                  className="w-full rounded-lg border border-orange-400 px-3 py-2 text-sm font-medium text-orange-700 hover:bg-orange-50"
+                >
+                  Pausar OS
+                </button>
+              )}
+
+              {osData.status === 'PAUSADO' && (
+                <button
+                  onClick={() => {
+                    setJustificativa('');
+                    setActionError('');
+                    setRetomarModal(true);
+                  }}
+                  className="w-full rounded-lg border border-green-400 px-3 py-2 text-sm font-medium text-green-700 hover:bg-green-50"
+                >
+                  Retomar OS
+                </button>
+              )}
+
               <button
                 onClick={() => {
                   setEventDesc('');
@@ -593,6 +678,31 @@ export function OSDetailPage() {
                 Pagamento
               </button>
 
+              <div className="border-t pt-2 mt-2">
+                <p className="text-xs font-medium text-muted-foreground mb-2">Logística</p>
+                {osData.statusLogistico === 'PENDENTE' && (
+                  <button
+                    onClick={() => logisticoMutation.mutate('RECEBIDO')}
+                    disabled={isTerminal || logisticoMutation.isPending}
+                    className="w-full rounded-lg border border-blue-400 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                  >
+                    {logisticoMutation.isPending ? 'Recebendo...' : 'Receber Equipamento'}
+                  </button>
+                )}
+                {osData.statusLogistico === 'RECEBIDO' && (
+                  <button
+                    onClick={() => logisticoMutation.mutate('ENTREGUE')}
+                    disabled={isTerminal || logisticoMutation.isPending}
+                    className="w-full rounded-lg border border-green-400 px-3 py-2 text-sm font-medium text-green-700 hover:bg-green-50 disabled:opacity-50"
+                  >
+                    {logisticoMutation.isPending ? 'Entregando...' : 'Entregar Equipamento'}
+                  </button>
+                )}
+                {osData.statusLogistico === 'ENTREGUE' && (
+                  <p className="text-xs text-muted-foreground">Equipamento entregue</p>
+                )}
+              </div>
+
               <button
                 onClick={handleOpenDiscount}
                 disabled={isDiscountBlocked || isRestricted}
@@ -632,8 +742,8 @@ export function OSDetailPage() {
               className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">Selecione...</option>
-              {STATUS_OS.map((s) => (
-                <option key={s.value} value={s.value} disabled={s.value === osData.status}>
+              {STATUS_OS.filter((s) => statusPermitidos.includes(s.value)).map((s) => (
+                <option key={s.value} value={s.value}>
                   {s.label}
                 </option>
               ))}
@@ -653,6 +763,62 @@ export function OSDetailPage() {
               className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               {statusMutation.isPending ? 'Alterando...' : 'Confirmar'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Pausar Modal */}
+      <Modal open={pausarModal} title="Pausar OS" onClose={() => setPausarModal(false)} size="sm">
+        <div className="space-y-4">
+          <FormField label="Justificativa">
+            <textarea
+              value={justificativa}
+              onChange={(e) => setJustificativa(e.target.value)}
+              rows={3}
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              placeholder="Informe o motivo da pausa..."
+            />
+          </FormField>
+          {actionError && <p className="text-sm text-destructive">{actionError}</p>}
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setPausarModal(false)} className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-accent">
+              Cancelar
+            </button>
+            <button
+              onClick={() => pausarMutation.mutate()}
+              disabled={!justificativa || justificativa.length < 3 || pausarMutation.isPending}
+              className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-50"
+            >
+              {pausarMutation.isPending ? 'Pausando...' : 'Pausar'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Retomar Modal */}
+      <Modal open={retomarModal} title="Retomar OS" onClose={() => setRetomarModal(false)} size="sm">
+        <div className="space-y-4">
+          <FormField label="Justificativa">
+            <textarea
+              value={justificativa}
+              onChange={(e) => setJustificativa(e.target.value)}
+              rows={3}
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              placeholder="Informe o motivo da retomada..."
+            />
+          </FormField>
+          {actionError && <p className="text-sm text-destructive">{actionError}</p>}
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setRetomarModal(false)} className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-accent">
+              Cancelar
+            </button>
+            <button
+              onClick={() => retomarMutation.mutate()}
+              disabled={!justificativa || justificativa.length < 3 || retomarMutation.isPending}
+              className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+            >
+              {retomarMutation.isPending ? 'Retomando...' : 'Retomar'}
             </button>
           </div>
         </div>

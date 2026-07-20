@@ -21,6 +21,12 @@ export const osAPI = {
   delete: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.OS.DELETE, id),
   changeStatus: (id: number, status: string, usuarioId: number) =>
     ipcRenderer.invoke(IPC_CHANNELS.OS.CHANGE_STATUS, id, status, usuarioId),
+  pausar: (id: number, justificativa: string, usuarioId: number) =>
+    ipcRenderer.invoke(IPC_CHANNELS.OS.PAUSAR, id, justificativa, usuarioId),
+  retomar: (id: number, justificativa: string, usuarioId: number) =>
+    ipcRenderer.invoke(IPC_CHANNELS.OS.RETOMAR, id, justificativa, usuarioId),
+  changeLogisticoStatus: (id: number, status: string, usuarioId: number) =>
+    ipcRenderer.invoke(IPC_CHANNELS.OS.CHANGE_LOGISTICO_STATUS, id, status, usuarioId),
   addEvent: (data: unknown) =>
     ipcRenderer.invoke(IPC_CHANNELS.OS.ADD_EVENT, data),
   addItem: (data: unknown) =>

@@ -4,6 +4,8 @@ import { EmailConfigService } from './email-config.service';
 import { OSService } from './os.service';
 import { registrar } from './log.service';
 import type { EmailSolicitacaoComVinculos } from '@shared/types/entities.types';
+import path from 'path';
+import fs from 'fs';
 
 let imapClient: any = null;
 
@@ -125,6 +127,14 @@ export class EmailService {
 
             novas++;
 
+            if (solicitacao) {
+              try {
+                await this.baixarAnexos(client, uid, fetchResult, solicitacao.id);
+              } catch (err: any) {
+                erros.push(`Erro ao baixar anexos do email ${emailRemetente}: ${err.message}`);
+              }
+            }
+
             if (contato && solicitacao) {
               try {
                 await this.autoConvertToOS(solicitacao.id, contato.clienteId);
@@ -208,6 +218,50 @@ export class EmailService {
       descricao: `Solicitacao de email #${solicitacaoId} convertida automaticamente para OS ${os.numeroOS}`,
       dadosContexto: { solicitacaoId, osId: os.id, numeroOS: os.numeroOS, clienteId },
     });
+  }
+
+  private async baixarAnexos(client: any, uid: number, fetchResult: any, solicitacaoId: number): Promise<void> {
+    const bodyStructure = fetchResult.bodyStructure;
+    if (!bodyStructure?.children) return;
+
+    const attachments = bodyStructure.children.filter((child: any) => {
+      const disposition = child.disposition;
+      return disposition === 'attachment' || (child.type && !child.type.startsWith('text/'));
+    });
+
+    if (attachments.length === 0) return;
+
+    const attachDir = path.join('resources', 'attachments', String(solicitacaoId));
+    if (!fs.existsSync(attachDir)) {
+      fs.mkdirSync(attachDir, { recursive: true });
+    }
+
+    for (const [index, attachment] of attachments.entries()) {
+      try {
+        const section = `${index + 1}`;
+        const partData: any = await client.fetchOne(uid, {
+          bodyParts: [section],
+        });
+
+        if (!partData?.bodyParts?.get?.(section)) continue;
+
+        const buffer = partData.bodyParts.get(section);
+        const filename = attachment.name || `anexo_${index + 1}`;
+        const filePath = path.join(attachDir, filename);
+
+        fs.writeFileSync(filePath, buffer);
+
+        await this.repository.createAnexo({
+          emailSolicitacaoId: solicitacaoId,
+          nomeArquivo: filename,
+          caminhoArquivo: filePath,
+          tamanho: buffer.length,
+          mimeType: attachment.type || null,
+        });
+      } catch (err: any) {
+        console.error(`[EmailService] Erro ao baixar anexo ${index}:`, err.message);
+      }
+    }
   }
 
   private async extrairTexto(client: any, uid: number): Promise<string> {

@@ -20,19 +20,25 @@ datasource db {
 // ENUMS
 // =============================================================================
 
-/// Status possiveis de uma Ordem de Servico
-/// Fluxo: ABERTA -> EM_DIAGNOSTICO -> AGUARDANDO_APROVACAO -> AGUARDANDO_PECA
-///        -> EM_EXECUCAO -> CONCLUIDA -> ENTREGUE
-/// Qualquer estado intermediario pode transitar para CANCELADA
+/// Status tecnicos de uma Ordem de Servico (eixo tecnico)
+/// Fluxo: AGUARDANDO_ATENDIMENTO -> EM_ATENDIMENTO -> PAUSADO/CONCLUIDA/CANCELADA
+/// PAUSADO pode retornar para EM_ATENDIMENTO (retomar)
+/// Qualquer estado pode transitar para CANCELADA
 enum StatusOS {
-  ABERTA
-  EM_DIAGNOSTICO
-  AGUARDANDO_APROVACAO
-  AGUARDANDO_PECA
-  EM_EXECUCAO
+  AGUARDANDO_ATENDIMENTO
+  EM_ATENDIMENTO
+  PAUSADO
   CONCLUIDA
-  ENTREGUE
   CANCELADA
+}
+
+/// Status logisticos de uma Ordem de Servico (eixo independente)
+/// Fluxo: PENDENTE -> RECEBIDO -> ENTREGUE
+/// Controla a movimentacao fisica do equipamento
+enum StatusLogistico {
+  PENDENTE
+  RECEBIDO
+  ENTREGUE
 }
 
 /// Perfis de usuario do sistema
@@ -184,8 +190,10 @@ model OrdemServico {
   equipamentoId   Int?
   tecnicoId       Int?
   contatoId       Int?
+  categoriaServicoId Int?
   tipoAtendimento TipoAtendimento  @default(INTERNO)
-  status          StatusOS         @default(ABERTA)
+  status          StatusOS         @default(AGUARDANDO_ATENDIMENTO)
+  statusLogistico StatusLogistico  @default(PENDENTE)
   dataEntrada     DateTime         @default(now())
   dataPrevisao    DateTime?
   dataConclusao   DateTime?
@@ -199,6 +207,7 @@ model OrdemServico {
   equipamento Equipamento? @relation(fields: [equipamentoId], references: [id])
   tecnico     Usuario?     @relation(fields: [tecnicoId], references: [id])
   contato     ClienteContato? @relation(fields: [contatoId], references: [id])
+  categoriaServico CategoriaServico? @relation(fields: [categoriaServicoId], references: [id])
   eventos     EventoOS[]
   itens       ItemOS[]
   inventarios Inventario[]
@@ -208,7 +217,9 @@ model OrdemServico {
   @@index([equipamentoId])
   @@index([tecnicoId])
   @@index([contatoId])
+  @@index([categoriaServicoId])
   @@index([status])
+  @@index([statusLogistico])
   @@index([dataEntrada])
   @@map("ordem_servico")
 }
@@ -260,6 +271,7 @@ model CategoriaServico {
   servicos         Servico[]
   subcategorias    SubcategoriaServico[]
   equipeCategorias EquipeCategoria[]
+  ordensServico    OrdemServico[]
 
   @@map("categoria_servico")
 }
@@ -443,9 +455,25 @@ model EmailSolicitacao {
   contato         ClienteContato?  @relation(fields: [contatoId], references: [id])
   os              OrdemServico?    @relation(fields: [osId], references: [id])
   usuarioAprovador Usuario?        @relation(fields: [usuarioAprovadorId], references: [id])
+  anexos          AnexoEmail[]
 
   @@index([status])
   @@index([emailRemetente])
   @@index([dataRecebimento])
   @@map("email_solicitacao")
+}
+
+model AnexoEmail {
+  id                 Int      @id @default(autoincrement())
+  emailSolicitacaoId Int
+  nomeArquivo        String
+  caminhoArquivo     String
+  tamanho            Int
+  mimeType           String?
+  dataUpload         DateTime @default(now())
+
+  solicitacao EmailSolicitacao @relation(fields: [emailSolicitacaoId], references: [id])
+
+  @@index([emailSolicitacaoId])
+  @@map("anexo_email")
 }

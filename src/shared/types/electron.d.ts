@@ -34,6 +34,9 @@ export interface OSAPI {
   update: (id: number, data: unknown) => Promise<unknown>;
   delete: (id: number) => Promise<unknown>;
   changeStatus: (id: number, status: string, usuarioId: number) => Promise<unknown>;
+  pausar: (id: number, justificativa: string, usuarioId: number) => Promise<unknown>;
+  retomar: (id: number, justificativa: string, usuarioId: number) => Promise<unknown>;
+  changeLogisticoStatus: (id: number, status: string, usuarioId: number) => Promise<unknown>;
   addEvent: (data: unknown) => Promise<unknown>;
   addItem: (data: unknown) => Promise<unknown>;
   removeItem: (id: number) => Promise<unknown>;
@@ -101,6 +104,7 @@ export interface EmailAPI {
   createContato: (data: unknown) => Promise<unknown>;
   updateContato: (id: number, data: unknown) => Promise<unknown>;
   deleteContato: (id: number) => Promise<unknown>;
+  listAttachments: (emailSolicitacaoId: number) => Promise<unknown>;
 }
 
 export interface ServicoAPI {
@@ -147,6 +151,11 @@ export interface PecaAPI {
   delete: (id: number) => Promise<unknown>;
 }
 
+export interface EventAPI {
+  on: (channel: string, callback: (...args: unknown[]) => void) => void;
+  off: (channel: string, callback: (...args: unknown[]) => void) => void;
+}
+
 declare global {
   interface Window {
     osTech: {
@@ -164,6 +173,7 @@ declare global {
       equipe: EquipeAPI;
       peca: PecaAPI;
       email: EmailAPI;
+      events: EventAPI;
     };
   }
 }

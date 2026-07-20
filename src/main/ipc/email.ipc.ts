@@ -71,4 +71,8 @@ export function registerEmailIpcHandlers() {
   ipcMain.handle(IPC_CHANNELS.EMAIL.DELETE_CONTATO, async (_, id: number) => {
     return contatoRepository.delete(id);
   });
+
+  ipcMain.handle(IPC_CHANNELS.EMAIL.LIST_ATTACHMENTS, async (_, emailSolicitacaoId: number) => {
+    return solicitacaoService.listAnexos(emailSolicitacaoId);
+  });
 }

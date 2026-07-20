@@ -127,6 +127,10 @@ export class EmailSolicitacaoService {
     return updated;
   }
 
+  async listAnexos(emailSolicitacaoId: number) {
+    return this.repository.listAnexos(emailSolicitacaoId);
+  }
+
   async conciliar(solicitacaoOrigemId: number, solicitacaoDestinoId: number, usuarioId: number) {
     const origem = await this.getById(solicitacaoOrigemId);
     const destino = await this.getById(solicitacaoDestinoId);

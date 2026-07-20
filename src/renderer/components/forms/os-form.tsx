@@ -2,7 +2,7 @@ import { useState, useMemo, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/auth-context';
 import { FormField } from '../shared/form-field';
-import type { Cliente, Equipamento, TipoAtendimento, CategoriaServico, SubcategoriaServico } from '@shared/types/entities.types';
+import type { Cliente, Equipamento, TipoAtendimento, CategoriaServico } from '@shared/types/entities.types';
 
 interface OSFormProps {
   onClose: () => void;
@@ -22,6 +22,7 @@ export function OSForm({ onClose }: OSFormProps) {
   const [clienteId, setClienteId] = useState(0);
   const [equipamentoId, setEquipamentoId] = useState(0);
   const [contatoId, setContatoId] = useState(0);
+  const [categoriaServicoId, setCategoriaServicoId] = useState(0);
   const [tipoAtendimento, setTipoAtendimento] = useState<TipoAtendimento>('INTERNO');
   const [observacoes, setObservacoes] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -52,20 +53,11 @@ export function OSForm({ onClose }: OSFormProps) {
     queryFn: () => window.osTech.categoriaServico.list(),
   });
 
-  const { data: subcategoriasData } = useQuery({
-    queryKey: ['subcategorias-servico'],
-    queryFn: () => window.osTech.subcategoriaServico.list(),
-  });
-
   const categoriasList = useMemo(() => {
     const all = Array.isArray(categoriasData) ? (categoriasData as CategoriaServico[]) : [];
     if (!isRestricted) return all;
     return all.filter((c) => allowedCategoriaIds.includes(c.id));
   }, [categoriasData, isRestricted, allowedCategoriaIds]);
-
-  const subcategoriasList = useMemo(() => {
-    return Array.isArray(subcategoriasData) ? (subcategoriasData as SubcategoriaServico[]) : [];
-  }, [subcategoriasData]);
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -73,6 +65,7 @@ export function OSForm({ onClose }: OSFormProps) {
         clienteId,
         equipamentoId: equipamentoId || undefined,
         contatoId: contatoId || undefined,
+        categoriaServicoId,
         tipoAtendimento,
         observacoes: observacoes || undefined,
       }, user!.id),
@@ -93,6 +86,7 @@ export function OSForm({ onClose }: OSFormProps) {
 
     const newErrors: Record<string, string> = {};
     if (!clienteId) newErrors.clienteId = 'Selecione um cliente';
+    if (!categoriaServicoId) newErrors.categoriaServicoId = 'Selecione uma categoria';
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -170,13 +164,20 @@ export function OSForm({ onClose }: OSFormProps) {
         </select>
       </FormField>
 
-      {isRestricted && categoriasList.length > 0 && (
-        <div className="rounded-lg border bg-muted/30 p-3">
-          <p className="text-xs text-muted-foreground">
-            Categorias da sua equipe: {categoriasList.map((c) => c.nome).join(', ')}
-          </p>
-        </div>
-      )}
+      <FormField label="Categoria do Serviço" required error={errors.categoriaServicoId}>
+        <select
+          value={categoriaServicoId}
+          onChange={(e) => setCategoriaServicoId(Number(e.target.value))}
+          className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value={0}>Selecione...</option>
+          {categoriasList.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nome}
+            </option>
+          ))}
+        </select>
+      </FormField>
 
       <FormField label="Observações">
         <textarea

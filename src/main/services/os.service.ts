@@ -13,9 +13,12 @@ import {
   createOSSchema,
   updateOSSchema,
   changeStatusSchema,
+  changeStatusLogisticoSchema,
+  pausarRetomarSchema,
   createEventoSchema,
   createItemOSSchema,
   validarTransicaoStatus,
+  validarTransicaoLogistica,
 } from '../validators/os.validator';
 import type {
   CreateOrdemServicoDTO,
@@ -23,13 +26,14 @@ import type {
   CreateEventoOSDTO,
   CreateItemOSDTO,
   StatusOS,
+  StatusLogistico,
 } from '@shared/types/entities.types';
 
 /** Status que nao permitem eventos */
-const STATUS_BLOQUEADOS_EVENTO: StatusOS[] = ['ENTREGUE', 'CANCELADA'];
+const STATUS_BLOQUEADOS_EVENTO: StatusOS[] = ['CONCLUIDA', 'CANCELADA'];
 
 /** Status que nao permitem itens */
-const STATUS_BLOQUEADOS_ITEM: StatusOS[] = ['ENTREGUE', 'CANCELADA'];
+const STATUS_BLOQUEADOS_ITEM: StatusOS[] = ['CONCLUIDA', 'CANCELADA'];
 
 export class OSService {
   private repository = new OrdemServicoRepository();
@@ -121,7 +125,7 @@ export class OSService {
     const os = await this.getById(id);
     if (
       (data.desconto !== undefined || data.descontoTipo !== undefined) &&
-      ['ENTREGUE', 'CANCELADA'].includes(os.status)
+      ['CONCLUIDA', 'CANCELADA'].includes(os.status)
     ) {
       throw new Error('Nao e possivel alterar desconto em OS finalizada ou cancelada');
     }
@@ -155,7 +159,7 @@ export class OSService {
       status: validated.status,
     };
 
-    if (validated.status === 'CONCLUIDA' || validated.status === 'ENTREGUE') {
+    if (validated.status === 'CONCLUIDA') {
       dadosAtualizacao.dataConclusao = new Date();
     }
 
@@ -176,8 +180,8 @@ export class OSService {
     };
     this.notificationService.notifyEvento(id, eventoData);
 
-    // Na conclusao/entrega, enviar PDF anexado
-    if (validated.status === 'CONCLUIDA' || validated.status === 'ENTREGUE') {
+    // Na conclusao, enviar PDF anexado
+    if (validated.status === 'CONCLUIDA') {
       this.notificationService.notifyConclusao(id, validated.status);
     }
 
@@ -189,6 +193,119 @@ export class OSService {
       descricao: `OS ${os.numeroOS}: ${statusAtual} -> ${validated.status}`,
       usuarioId,
       dadosContexto: { osId: id, statusAtual, novoStatus: validated.status },
+    });
+
+    return osAtualizada;
+  }
+
+  // ===========================================================================
+  // PAUSAR / RETOMAR
+  // ===========================================================================
+
+  async pausar(id: number, justificativa: string, usuarioId: number) {
+    const validated = pausarRetomarSchema.parse({ justificativa });
+    const os = await this.getById(id);
+
+    const statusAtual = os.status as StatusOS;
+    if (!validarTransicaoStatus(statusAtual, 'PAUSADO')) {
+      throw new Error(
+        `Nao e possivel pausar OS com status ${statusAtual}`
+      );
+    }
+
+    const osAtualizada = await this.repository.update(id, { status: 'PAUSADO' } as any);
+
+    await this.eventoRepository.create({
+      osId: id,
+      usuarioId,
+      descricao: `OS pausada: ${validated.justificativa}`,
+    });
+
+    this.notificationService.notifyEvento(id, {
+      osId: id,
+      usuarioId,
+      descricao: `OS pausada: ${validated.justificativa}`,
+    });
+
+    await registrar({
+      nivel: 'INFO',
+      categoria: 'OS',
+      acao: 'PAUSAR',
+      descricao: `OS ${os.numeroOS}: pausada - ${validated.justificativa}`,
+      usuarioId,
+      dadosContexto: { osId: id, justificativa: validated.justificativa },
+    });
+
+    return osAtualizada;
+  }
+
+  async retomar(id: number, justificativa: string, usuarioId: number) {
+    const validated = pausarRetomarSchema.parse({ justificativa });
+    const os = await this.getById(id);
+
+    const statusAtual = os.status as StatusOS;
+    if (!validarTransicaoStatus(statusAtual, 'EM_ATENDIMENTO')) {
+      throw new Error(
+        `Nao e possivel retomar OS com status ${statusAtual}`
+      );
+    }
+
+    const osAtualizada = await this.repository.update(id, { status: 'EM_ATENDIMENTO' } as any);
+
+    await this.eventoRepository.create({
+      osId: id,
+      usuarioId,
+      descricao: `OS retomada: ${validated.justificativa}`,
+    });
+
+    this.notificationService.notifyEvento(id, {
+      osId: id,
+      usuarioId,
+      descricao: `OS retomada: ${validated.justificativa}`,
+    });
+
+    await registrar({
+      nivel: 'INFO',
+      categoria: 'OS',
+      acao: 'RETOMAR',
+      descricao: `OS ${os.numeroOS}: retomada - ${validated.justificativa}`,
+      usuarioId,
+      dadosContexto: { osId: id, justificativa: validated.justificativa },
+    });
+
+    return osAtualizada;
+  }
+
+  // ===========================================================================
+  // STATUS LOGISTICO
+  // ===========================================================================
+
+  async changeStatusLogistico(id: number, novoStatus: StatusLogistico, usuarioId: number) {
+    const validated = changeStatusLogisticoSchema.parse({ status: novoStatus });
+    const os = await this.getById(id);
+
+    const statusAtual = os.statusLogistico as StatusLogistico;
+    if (!validarTransicaoLogistica(statusAtual, validated.status)) {
+      throw new Error(
+        `Transicao logistica invalida: ${statusAtual} -> ${validated.status}`
+      );
+    }
+
+    const osAtualizada = await this.repository.update(id, { statusLogistico: validated.status } as any);
+
+    await this.eventoRepository.create({
+      osId: id,
+      usuarioId,
+      descricao: `Status logistico alterado de ${statusAtual} para ${validated.status}`,
+    });
+
+    await registrar({
+      nivel: 'INFO',
+      categoria: 'OS',
+      acao: 'CHANGE_LOGISTICO_STATUS',
+      descricao: `OS ${os.numeroOS}: logistico ${statusAtual} -> ${validated.status}`,
+      usuarioId,
+      dadosContexto: { osId: id, statusLogisticoAtual: statusAtual, novoStatusLogistico: validated.status },
     });
 
     return osAtualizada;

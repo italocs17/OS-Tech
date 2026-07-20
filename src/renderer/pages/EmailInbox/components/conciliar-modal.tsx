@@ -12,6 +12,7 @@ interface EmailSolicitacaoItem {
   id: number;
   emailRemetente: string;
   assunto: string;
+  corpoTexto: string;
   status: string;
   osId: number | null;
   cliente?: { id: number; nome: string } | null;
@@ -21,6 +22,7 @@ interface EmailSolicitacaoItem {
 export function ConciliarModal({ solicitacaoId, open, onClose }: ConciliarModalProps) {
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [searchNumero, setSearchNumero] = useState('');
 
   const { data: allSolicitacoes = [] } = useQuery({
     queryKey: ['email-solicitacoes'],
@@ -46,6 +48,16 @@ export function ConciliarModal({ solicitacaoId, open, onClose }: ConciliarModalP
       (s.status === 'CONVERTIDO' || s.status === 'AGUARDANDO_ATENDIMENTO')
   );
 
+  const filteredCandidates = searchNumero.trim()
+    ? candidates.filter((s) =>
+        s.os?.numeroOS?.toLowerCase().includes(searchNumero.toLowerCase())
+      )
+    : candidates;
+
+  const selectedSolicitacao = selectedId
+    ? allSolicitacoes.find((s) => s.id === selectedId)
+    : null;
+
   return (
     <Modal open={open} title="Conciliar Chamado" onClose={onClose} size="lg">
       <div className="space-y-4">
@@ -63,11 +75,22 @@ export function ConciliarModal({ solicitacaoId, open, onClose }: ConciliarModalP
 
         <div className="space-y-2">
           <p className="text-sm font-medium">Selecione o chamado principal:</p>
-          {candidates.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum chamado disponivel para conciliacao.</p>
+          <input
+            type="text"
+            placeholder="Buscar por numero da OS..."
+            value={searchNumero}
+            onChange={(e) => setSearchNumero(e.target.value)}
+            className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          {filteredCandidates.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {candidates.length === 0
+                ? 'Nenhum chamado disponivel para conciliacao.'
+                : 'Nenhum resultado para a busca.'}
+            </p>
           ) : (
             <div className="max-h-60 space-y-2 overflow-y-auto">
-              {candidates.map((s) => (
+              {filteredCandidates.map((s) => (
                 <button
                   key={s.id}
                   onClick={() => setSelectedId(s.id)}
@@ -96,6 +119,16 @@ export function ConciliarModal({ solicitacaoId, open, onClose }: ConciliarModalP
             </div>
           )}
         </div>
+
+        {selectedSolicitacao && (
+          <div className="rounded-lg border bg-muted/30 p-3">
+            <p className="text-xs font-medium text-muted-foreground mb-1">Texto original do chamado selecionado:</p>
+            <p className="text-xs font-medium">{selectedSolicitacao.assunto}</p>
+            <div className="mt-1 max-h-32 overflow-y-auto">
+              <p className="text-xs text-muted-foreground whitespace-pre-wrap">{selectedSolicitacao.corpoTexto}</p>
+            </div>
+          </div>
+        )}
 
         <div className="flex justify-end gap-2">
           <button onClick={onClose} className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-accent">

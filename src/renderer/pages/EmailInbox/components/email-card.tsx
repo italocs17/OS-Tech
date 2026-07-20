@@ -65,7 +65,7 @@ export function EmailCard({ item, onView, onLinkClient, onConvert, onReject, onC
               onClick={() => onConvert(item.id)}
               className="rounded-md px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50"
             >
-              Converter
+              Atender
             </button>
           )}
           {(item.status === 'NAO_CADASTRADO' || item.status === 'AGUARDANDO_ATENDIMENTO') && onReject && (

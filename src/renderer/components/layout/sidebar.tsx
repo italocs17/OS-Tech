@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { NavLink } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '../../lib/utils';
 import { APP_VERSION } from '@/lib/constants';
 import { useAuth } from '@/lib/auth-context';
@@ -53,14 +53,31 @@ function isGroup(entry: MenuEntry): entry is MenuGroup {
 
 export function Sidebar() {
   const { user, logout } = useAuth();
+  const queryClient = useQueryClient();
   const [passwordModal, setPasswordModal] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({Cadastro: true});
+  const [pulseEmail, setPulseEmail] = useState(false);
 
   const { data: emailPendingCount } = useQuery({
     queryKey: ['email-pending-sidebar'],
     queryFn: () => window.osTech.email.countPending() as Promise<number>,
     refetchInterval: 60000,
   });
+
+  const handleNewEmails = useCallback((count: unknown) => {
+    queryClient.invalidateQueries({ queryKey: ['email-pending-sidebar'] });
+    queryClient.invalidateQueries({ queryKey: ['email-pending'] });
+    queryClient.invalidateQueries({ queryKey: ['email-solicitacoes'] });
+    setPulseEmail(true);
+    setTimeout(() => setPulseEmail(false), 5000);
+  }, [queryClient]);
+
+  useEffect(() => {
+    window.osTech.events.on('email:new-found', handleNewEmails);
+    return () => {
+      window.osTech.events.off('email:new-found', handleNewEmails);
+    };
+  }, [handleNewEmails]);
 
   const isItemVisible = (item: MenuItem) => {
     if (!item.perfis || !user) return true;
@@ -153,7 +170,10 @@ export function Sidebar() {
               <span>{entry.icon}</span>
               <span>{entry.label}</span>
               {entry.to === '/email-inbox' && emailPendingCount && emailPendingCount > 0 && (
-                <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-bold text-destructive-foreground">
+                <span className={cn(
+                  "ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-bold text-destructive-foreground",
+                  pulseEmail ? "bg-yellow-500 animate-pulse" : "bg-destructive"
+                )}>
                   {emailPendingCount > 99 ? '99+' : emailPendingCount}
                 </span>
               )}

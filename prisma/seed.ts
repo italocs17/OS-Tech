@@ -523,7 +523,8 @@ async function main() {
         numeroOS: generateSequentialOS(1),
         clienteId: clientes[0].id,
         equipamentoId: equipamentos[0].id,
-        status: StatusOS.ENTREGUE,
+        status: StatusOS.CONCLUIDA,
+        statusLogistico: 'ENTREGUE' as any,
         dataEntrada: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
         dataPrevisao: new Date(Date.now() - 22 * 24 * 60 * 60 * 1000),
         dataConclusao: new Date(Date.now() - 22 * 24 * 60 * 60 * 1000),
@@ -536,6 +537,7 @@ async function main() {
         clienteId: clientes[0].id,
         equipamentoId: equipamentos[1].id,
         status: StatusOS.CONCLUIDA,
+        statusLogistico: 'RECEBIDO' as any,
         dataEntrada: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000),
         dataPrevisao: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
         dataConclusao: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
@@ -547,7 +549,7 @@ async function main() {
         numeroOS: generateSequentialOS(3),
         clienteId: clientes[1].id,
         equipamentoId: equipamentos[2].id,
-        status: StatusOS.EM_EXECUCAO,
+        status: StatusOS.EM_ATENDIMENTO,
         dataEntrada: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
         dataPrevisao: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
         observacoes: 'MacBook aquecendo muito. Limpeza e troca de pasta térmica.',
@@ -558,7 +560,7 @@ async function main() {
         numeroOS: generateSequentialOS(4),
         clienteId: clientes[2].id,
         equipamentoId: equipamentos[3].id,
-        status: StatusOS.AGUARDANDO_APROVACAO,
+        status: StatusOS.EM_ATENDIMENTO,
         dataEntrada: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
         dataPrevisao: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
         observacoes: 'Diagnóstico: HD com setores defeituosos. Aguardando aprovação para troca.',
@@ -569,7 +571,7 @@ async function main() {
         numeroOS: generateSequentialOS(5),
         clienteId: clientes[3].id,
         equipamentoId: equipamentos[5].id,
-        status: StatusOS.EM_DIAGNOSTICO,
+        status: StatusOS.EM_ATENDIMENTO,
         dataEntrada: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
         dataPrevisao: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
         observacoes: 'Notebook não liga. Em diagnóstico inicial.',
@@ -580,7 +582,7 @@ async function main() {
         numeroOS: generateSequentialOS(6),
         clienteId: clientes[3].id,
         equipamentoId: equipamentos[6].id,
-        status: StatusOS.ABERTA,
+        status: StatusOS.AGUARDANDO_ATENDIMENTO,
         dataEntrada: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
         dataPrevisao: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
         observacoes: 'Cliente solicitou orçamento para upgrade de memória.',
@@ -591,7 +593,7 @@ async function main() {
         numeroOS: generateSequentialOS(7),
         clienteId: clientes[0].id,
         tipoAtendimento: 'INTERNO' as any,
-        status: StatusOS.EM_EXECUCAO,
+        status: StatusOS.EM_ATENDIMENTO,
         dataEntrada: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
         dataPrevisao: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
         observacoes: 'Atendimento remoto: cliente solicitou instalação de antivírus e configuração de e-mail.',
@@ -603,7 +605,7 @@ async function main() {
   // ── 10. Eventos ───────────────────────────────────────────────────────
   console.log('📝 Criando eventos...');
   const eventosData = [
-    // OS 0001 - ENTREGUE
+    // OS 0001 - CONCLUIDA + ENTREGUE
     { osId: osList[0].id, usuarioId: usuarios[2].id, descricao: 'Equipamento recebido na recepção. Cliente deixou computador e carregador.', dataHora: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000) },
     { osId: osList[0].id, usuarioId: usuarios[1].id, descricao: 'Diagnóstico inicial: sistema operacional corrompido, muitos programas em segundo plano.', dataHora: new Date(Date.now() - 24 * 24 * 60 * 60 * 1000) },
     { osId: osList[0].id, usuarioId: usuarios[1].id, descricao: 'Formatação concluída. Windows 11 Pro instalado e drivers atualizados.', dataHora: new Date(Date.now() - 23 * 24 * 60 * 60 * 1000) },
@@ -617,21 +619,21 @@ async function main() {
     { osId: osList[1].id, usuarioId: usuarios[1].id, descricao: 'Windows 11 instalado. Todos os drivers Lenovo atualizados.', dataHora: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000) },
     { osId: osList[1].id, usuarioId: usuarios[3].id, descricao: 'OS concluída. Aguardando cliente para retirada.', dataHora: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) },
 
-    // OS 0003 - EM_EXECUCAO
+    // OS 0003 - EM_ATENDIMENTO
     { osId: osList[2].id, usuarioId: usuarios[2].id, descricao: 'MacBook Pro recebido. Cliente relatou aquecimento e desligamentos.', dataHora: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000) },
     { osId: osList[2].id, usuarioId: usuarios[1].id, descricao: 'Diagnóstico: ventoinha obstruída, pasta térmica ressecada.', dataHora: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000) },
     { osId: osList[2].id, usuarioId: usuarios[1].id, descricao: 'Limpeza interna concluída. Pasta térmica substituída.', dataHora: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000) },
 
-    // OS 0004 - AGUARDANDO_APROVACAO
+    // OS 0004 - EM_ATENDIMENTO
     { osId: osList[3].id, usuarioId: usuarios[2].id, descricao: 'HP ProDesk recebido para diagnóstico.', dataHora: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
     { osId: osList[3].id, usuarioId: usuarios[1].id, descricao: 'HD com 876 setores defeituosos. Risco iminente de perda de dados.', dataHora: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000) },
     { osId: osList[3].id, usuarioId: usuarios[3].id, descricao: 'Orçamento enviado ao cliente: SSD 512GB Samsung + instalação. Aguardando aprovação.', dataHora: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) },
 
-    // OS 0005 - EM_DIAGNOSTICO
+    // OS 0005 - EM_ATENDIMENTO
     { osId: osList[4].id, usuarioId: usuarios[2].id, descricao: 'Asus ZenBook recebido. Não liga.', dataHora: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) },
     { osId: osList[4].id, usuarioId: usuarios[1].id, descricao: 'Teste de fonte: OK. Verificando placa-mãe.', dataHora: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) },
 
-    // OS 0006 - ABERTA
+    // OS 0006 - AGUARDANDO_ATENDIMENTO
     { osId: osList[5].id, usuarioId: usuarios[2].id, descricao: 'Solicitação de upgrade de memória registrada. Cliente quer aumentar de 8GB para 16GB.', dataHora: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000) },
 
     // OS 0007 - INTERNO - Instalação remota de antivírus
@@ -836,7 +838,7 @@ async function main() {
     { dataHora: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000), nivel: NivelLog.INFO, categoria: CategoriaLog.OS, acao: 'OS_CRIADA', descricao: 'OS 0002 criada para Pedro Henrique Almeida - Notebook Lenovo ThinkPad T14.', usuarioId: usuarios[2].id },
     { dataHora: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000), nivel: NivelLog.INFO, categoria: CategoriaLog.BACKUP, acao: 'BACKUP_CONCLUIDO', descricao: 'Backup automático do banco de dados realizado com sucesso.', usuarioId: usuarios[0].id },
     { dataHora: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000), nivel: NivelLog.INFO, categoria: CategoriaLog.CLIENTE, acao: 'CLIENTE_CRIADO', descricao: 'Cliente Ana Beatriz Souza cadastrado (CPF: 987.654.321-11).', usuarioId: usuarios[2].id },
-    { dataHora: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), nivel: NivelLog.INFO, categoria: CategoriaLog.OS, acao: 'STATUS_ALTERADO', descricao: 'OS 0004 status alterado para AGUARDANDO_APROVACAO. Orçamento enviado ao cliente.', usuarioId: usuarios[3].id },
+    { dataHora: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), nivel: NivelLog.INFO, categoria: CategoriaLog.OS, acao: 'STATUS_ALTERADO', descricao: 'OS 0004 status alterado para EM_ATENDIMENTO. Orcamento enviado ao cliente.', usuarioId: usuarios[3].id },
     { dataHora: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), nivel: NivelLog.INFO, categoria: CategoriaLog.AUTH, acao: 'LOGIN', descricao: 'Usuário maria.santos realizou login com sucesso.', usuarioId: usuarios[2].id },
   ];
 

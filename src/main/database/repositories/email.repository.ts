@@ -56,4 +56,15 @@ export class EmailRepository {
   async update(id: number, data: UpdateEmailSolicitacaoDTO) {
     return prisma.emailSolicitacao.update({ where: { id }, data });
   }
+
+  async listAnexos(emailSolicitacaoId: number) {
+    return prisma.anexoEmail.findMany({
+      where: { emailSolicitacaoId },
+      orderBy: { dataUpload: 'asc' },
+    });
+  }
+
+  async createAnexo(data: { emailSolicitacaoId: number; nomeArquivo: string; caminhoArquivo: string; tamanho: number; mimeType?: string }) {
+    return prisma.anexoEmail.create({ data });
+  }
 }

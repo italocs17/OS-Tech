@@ -6,6 +6,7 @@ import { LoadingSpinner } from '../../components/shared/loading-spinner';
 import { Modal } from '../../components/shared/modal';
 import { FormField } from '../../components/shared/form-field';
 import { SearchInput } from '../../components/shared/search-input';
+import { ToggleSwitch } from '../../components/shared/toggle-switch';
 import { CurrencyInput } from '../../components/shared/currency-input';
 import { formatCurrency } from '../../lib/utils';
 import type {
@@ -21,6 +22,7 @@ interface ServicoRow {
   id: number;
   descricao: string;
   valorPadrao: number;
+  ativo: boolean;
   categoriaId: number | null;
   subcategoriaId: number | null;
   categoria?: { nome: string } | null;
@@ -32,18 +34,21 @@ interface PecaRow {
   descricao: string;
   fabricante: string | null;
   valorReferencia: number;
+  ativo: boolean;
 }
 
 interface CategoriaServicoRow {
   id: number;
   nome: string;
   descricao: string | null;
+  ativo: boolean;
 }
 
 interface SubcategoriaServicoRow {
   id: number;
   nome: string;
   descricao: string | null;
+  ativo: boolean;
   categoriaId: number;
   categoria?: { nome: string } | null;
 }
@@ -87,12 +92,12 @@ export function CatalogPage() {
     return subcategoriasData.filter((s: SubcategoriaServicoRow) => s.categoriaId === filterCategoriaId);
   }, [subcategoriasData, filterCategoriaId]);
 
-  const deleteMutation = useMutation({
-    mutationFn: async ({ type, id }: { type: 'servico' | 'peca' | 'categoria' | 'subcategoria'; id: number }) => {
-      if (type === 'servico') return window.osTech.servico.delete(id);
-      if (type === 'categoria') return window.osTech.categoriaServico.delete(id);
-      if (type === 'subcategoria') return window.osTech.subcategoriaServico.delete(id);
-      return window.osTech.peca.delete(id);
+  const toggleAtivoMutation = useMutation({
+    mutationFn: async ({ type, id, ativo }: { type: 'servico' | 'peca' | 'categoria' | 'subcategoria'; id: number; ativo: boolean }) => {
+      if (type === 'servico') return window.osTech.servico.update(id, { ativo });
+      if (type === 'categoria') return window.osTech.categoriaServico.update(id, { ativo });
+      if (type === 'subcategoria') return window.osTech.subcategoriaServico.update(id, { ativo });
+      return window.osTech.peca.update(id, { ativo });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['servicos'] });
@@ -123,17 +128,11 @@ export function CatalogPage() {
       key: 'acoes',
       header: '',
       render: (item) => (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (confirm('Excluir este servico?')) {
-              deleteMutation.mutate({ type: 'servico', id: item.id });
-            }
-          }}
-          className="text-sm text-destructive hover:underline"
-        >
-          Excluir
-        </button>
+        <ToggleSwitch
+          checked={item.ativo}
+          onChange={(ativo) => toggleAtivoMutation.mutate({ type: 'servico', id: item.id, ativo })}
+          label={item.ativo ? 'Desativar servico' : 'Ativar servico'}
+        />
       ),
     },
   ];
@@ -150,17 +149,11 @@ export function CatalogPage() {
       key: 'acoes',
       header: '',
       render: (item) => (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (confirm('Excluir esta peca?')) {
-              deleteMutation.mutate({ type: 'peca', id: item.id });
-            }
-          }}
-          className="text-sm text-destructive hover:underline"
-        >
-          Excluir
-        </button>
+        <ToggleSwitch
+          checked={item.ativo}
+          onChange={(ativo) => toggleAtivoMutation.mutate({ type: 'peca', id: item.id, ativo })}
+          label={item.ativo ? 'Desativar peca' : 'Ativar peca'}
+        />
       ),
     },
   ];
@@ -172,17 +165,11 @@ export function CatalogPage() {
       key: 'acoes',
       header: '',
       render: (item) => (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (confirm('Excluir esta categoria?')) {
-              deleteMutation.mutate({ type: 'categoria', id: item.id });
-            }
-          }}
-          className="text-sm text-destructive hover:underline"
-        >
-          Excluir
-        </button>
+        <ToggleSwitch
+          checked={item.ativo}
+          onChange={(ativo) => toggleAtivoMutation.mutate({ type: 'categoria', id: item.id, ativo })}
+          label={item.ativo ? 'Desativar categoria' : 'Ativar categoria'}
+        />
       ),
     },
   ];
@@ -199,17 +186,11 @@ export function CatalogPage() {
       key: 'acoes',
       header: '',
       render: (item) => (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (confirm('Excluir esta subcategoria?')) {
-              deleteMutation.mutate({ type: 'subcategoria', id: item.id });
-            }
-          }}
-          className="text-sm text-destructive hover:underline"
-        >
-          Excluir
-        </button>
+        <ToggleSwitch
+          checked={item.ativo}
+          onChange={(ativo) => toggleAtivoMutation.mutate({ type: 'subcategoria', id: item.id, ativo })}
+          label={item.ativo ? 'Desativar subcategoria' : 'Ativar subcategoria'}
+        />
       ),
     },
   ];

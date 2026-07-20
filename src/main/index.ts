@@ -62,9 +62,12 @@ function startEmailPolling() {
   const emailService = new EmailService();
   const check = async () => {
     try {
-      await emailService.checkMail();
-    } catch {
-      // Silently fail on auto-poll
+      const result = await emailService.checkMail();
+      if (result && result.novas > 0 && mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('email:new-found', result.novas);
+      }
+    } catch (err) {
+      console.error('[EmailPolling] Erro na verificacao automatica:', err);
     }
   };
   emailPollTimer = setInterval(check, EMAIL_POLL_INTERVAL);

@@ -45,7 +45,7 @@ export function ConvertModal({ solicitacaoId, solicitacaoAssunto, open, onClose,
   };
 
   return (
-    <Modal open={open} title="Converter em Ordem de Serviço" onClose={onClose} size="lg">
+    <Modal open={open} title="Atender OS" onClose={onClose} size="lg">
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">
           Uma nova OS será criada a partir da solicitação: <strong>{solicitacaoAssunto}</strong>
@@ -106,7 +106,7 @@ export function ConvertModal({ solicitacaoId, solicitacaoAssunto, open, onClose,
             disabled={convertMutation.isPending}
             className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            {convertMutation.isPending ? 'Convertendo...' : 'Converter em OS'}
+            {convertMutation.isPending ? 'Atendendo...' : 'Atender OS'}
           </button>
         </div>
       </div>

@@ -26,6 +26,7 @@ export class OrdemServicoRepository {
         cliente: true,
         equipamento: true,
         contato: true,
+        categoriaServico: true,
         eventos: { orderBy: { dataHora: 'asc' } },
         itens: true,
         inventarios: true,

@@ -29,6 +29,9 @@ export function registerReportIpcHandlers() {
         case 'recibo':
           filePath = await pdfService.generateRecibo(osId);
           break;
+        case 'recibo-recebimento':
+          filePath = await pdfService.generateReciboRecebimento(osId);
+          break;
         default:
           throw new Error(`Tipo de PDF desconhecido: ${type}`);
       }
@@ -201,6 +204,9 @@ export function registerReportIpcHandlers() {
             break;
           case 'recibo':
             await pdfService.generateRecibo(osId, filePath);
+            break;
+          case 'recibo-recebimento':
+            await pdfService.generateReciboRecebimento(osId, filePath);
             break;
         }
       }

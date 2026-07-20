@@ -84,14 +84,16 @@ export interface UpdateEquipamentoDTO {
 // =============================================================================
 
 export type StatusOS =
-  | 'ABERTA'
-  | 'EM_DIAGNOSTICO'
-  | 'AGUARDANDO_APROVACAO'
-  | 'AGUARDANDO_PECA'
-  | 'EM_EXECUCAO'
+  | 'AGUARDANDO_ATENDIMENTO'
+  | 'EM_ATENDIMENTO'
+  | 'PAUSADO'
   | 'CONCLUIDA'
-  | 'ENTREGUE'
   | 'CANCELADA';
+
+export type StatusLogistico =
+  | 'PENDENTE'
+  | 'RECEBIDO'
+  | 'ENTREGUE';
 
 export type TipoDesconto = 'ABSOLUTO' | 'PERCENTUAL';
 export type FormaPagamento = 'CONTRATO' | 'PIX' | 'ESPECIE' | 'DEBITO' | 'CREDITO_A_VISTA' | 'CREDITO_PARCELADO';
@@ -102,8 +104,10 @@ export interface OrdemServico {
   numeroOS: string;
   clienteId: number;
   equipamentoId: number | null;
+  categoriaServicoId: number | null;
   tipoAtendimento: TipoAtendimento;
   status: StatusOS;
+  statusLogistico: StatusLogistico;
   dataEntrada: Date;
   dataPrevisao: Date | null;
   dataConclusao: Date | null;
@@ -117,9 +121,11 @@ export interface CreateOrdemServicoDTO {
   clienteId: number;
   equipamentoId?: number;
   contatoId?: number;
+  categoriaServicoId?: number;
   tipoAtendimento?: TipoAtendimento;
   observacoes?: string;
   dataPrevisao?: Date;
+  statusLogistico?: StatusLogistico;
 }
 
 export interface UpdateOrdemServicoDTO {
@@ -129,9 +135,11 @@ export interface UpdateOrdemServicoDTO {
   tipoAtendimento?: TipoAtendimento;
   equipamentoId?: number | null;
   contatoId?: number | null;
+  categoriaServicoId?: number | null;
   desconto?: number | null;
   descontoTipo?: TipoDesconto;
   formaPagamento?: FormaPagamento;
+  statusLogistico?: StatusLogistico;
 }
 
 // =============================================================================
@@ -489,6 +497,7 @@ export interface ClienteContato {
   nome: string;
   email: string;
   telefone: string | null;
+  isPadrao: boolean;
   ativo: boolean;
 }
 
@@ -575,6 +584,20 @@ export interface ConvertToOSDTO {
   usuarioId: number;
   observacoes?: string;
   tipoAtendimento?: string;
+}
+
+// =============================================================================
+// ANEXO EMAIL
+// =============================================================================
+
+export interface AnexoEmail {
+  id: number;
+  emailSolicitacaoId: number;
+  nomeArquivo: string;
+  caminhoArquivo: string;
+  tamanho: number;
+  mimeType: string | null;
+  dataUpload: Date;
 }
 
 export interface LogFiltros {

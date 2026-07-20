@@ -3,14 +3,14 @@ import { render, screen } from '@testing-library/react';
 import { StatusBadge } from '../components/shared/status-badge';
 
 describe('StatusBadge', () => {
-  it('renderiza o status ABERTA', () => {
-    render(<StatusBadge status="ABERTA" />);
-    expect(screen.getByText('ABERTA')).toBeInTheDocument();
+  it('renderiza o status AGUARDANDO_ATENDIMENTO', () => {
+    render(<StatusBadge status="AGUARDANDO_ATENDIMENTO" />);
+    expect(screen.getByText('AGUARDANDO ATENDIMENTO')).toBeInTheDocument();
   });
 
-  it('renderiza EM_DIAGNOSTICO com underscores', () => {
-    render(<StatusBadge status="EM_DIAGNOSTICO" />);
-    expect(screen.getByText('EM DIAGNOSTICO')).toBeInTheDocument();
+  it('renderiza EM_ATENDIMENTO com underscores', () => {
+    render(<StatusBadge status="EM_ATENDIMENTO" />);
+    expect(screen.getByText('EM ATENDIMENTO')).toBeInTheDocument();
   });
 
   it('aplica classe de cor para status conhecido', () => {

@@ -76,7 +76,28 @@ Implementado em: 16/07/2026
 
 ---
 
-## v2.4 — Contratos e Recorrência
+## v2.5 — Simplificação de Status + Soft Delete
+
+Implementado em: 20/07/2026
+
+**Objetivo:** Simplificar o fluxo de status (8 uniaxiais → 5 técnicos + 3 logísticos) e substituir botões "Excluir" por toggle ativo/inativo.
+
+**Detalhes:** Ver `docs/plans/003-status-simplification-and-soft-delete.md`
+
+### Funcionalidades
+
+- [x] Status técnico simplificado: AGUARDANDO_ATENDIMENTO → EM_ATENDIMENTO → PAUSADO/CONCLUIDA/CANCELADA
+- [x] Status logístico independente: PENDENTE → RECEBIDO → ENTREGUE
+- [x] Pausar/Retomar OS com justificativa (texto obrigatório, registrado como evento)
+- [x] Recibo de recebimento (documento simples ao receber equipamento)
+- [x] Eixo logístico sempre visível na tela de detalhes da OS
+- [x] Toggle ativo/inativo para: Cliente, Contato, Equipamento, Serviço, Categoria, Subcategoria, Peça, Equipe, Usuário
+- [x] Filtro "Mostrar inativos" nas listagens (padrão: ocultos)
+- [x] Itens inativos nunca aparecem em dropdowns de seleção
+
+---
+
+## v2.6 — Contratos e Recorrência
 
 Pré-planejado em: 03/07/2026
 

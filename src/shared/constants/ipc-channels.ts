@@ -30,6 +30,9 @@ export const IPC_CHANNELS = {
     DELETE: 'os:delete',
     ADD_EVENT: 'os:add-event',
     CHANGE_STATUS: 'os:change-status',
+    PAUSAR: 'os:pausar',
+    RETOMAR: 'os:retomar',
+    CHANGE_LOGISTICO_STATUS: 'os:change-logistico-status',
     ADD_ITEM: 'os:add-item',
     REMOVE_ITEM: 'os:remove-item',
     GET_ITENS: 'os:get-itens',
@@ -111,6 +114,7 @@ export const IPC_CHANNELS = {
     CREATE_CONTATO: 'email:create-contato',
     UPDATE_CONTATO: 'email:update-contato',
     DELETE_CONTATO: 'email:delete-contato',
+    LIST_ATTACHMENTS: 'email:list-attachments',
   },
   REPORT: {
     PDF: 'report:pdf',

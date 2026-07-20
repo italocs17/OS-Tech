@@ -5,13 +5,10 @@ import { Modal } from '../../components/shared/modal';
 import { FormField } from '../../components/shared/form-field';
 
 const OS_STATUS = [
-  'ABERTA',
-  'EM_DIAGNOSTICO',
-  'AGUARDANDO_APROVACAO',
-  'AGUARDANDO_PECA',
-  'EM_EXECUCAO',
+  'AGUARDANDO_ATENDIMENTO',
+  'EM_ATENDIMENTO',
+  'PAUSADO',
   'CONCLUIDA',
-  'ENTREGUE',
   'CANCELADA',
 ];
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Modal } from '../../../components/shared/modal';
+import { ToggleSwitch } from '../../../components/shared/toggle-switch';
 
 interface Contato {
   id: number;
@@ -59,8 +60,8 @@ export function ContactsModal({ clienteId, clienteNome, open, onClose }: Contact
     onError: (err: any) => setError(err?.message || 'Erro ao atualizar contato'),
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => window.osTech.email.deleteContato(id),
+  const toggleAtivoMutation = useMutation({
+    mutationFn: ({ id, ativo }: { id: number; ativo: boolean }) => window.osTech.email.updateContato(id, { ativo }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cliente-contatos', clienteId] });
     },
@@ -104,12 +105,6 @@ export function ContactsModal({ clienteId, clienteNome, open, onClose }: Contact
         email: formData.email,
         telefone: formData.telefone || undefined,
       });
-    }
-  };
-
-  const handleDelete = (id: number) => {
-    if (window.confirm('Remover este contato?')) {
-      deleteMutation.mutate(id);
     }
   };
 
@@ -157,12 +152,11 @@ export function ContactsModal({ clienteId, clienteNome, open, onClose }: Contact
                           >
                             Editar
                           </button>
-                          <button
-                            onClick={() => handleDelete(c.id)}
-                            className="text-xs text-red-600 hover:underline"
-                          >
-                            Remover
-                          </button>
+                          <ToggleSwitch
+                            checked={c.ativo}
+                            onChange={(ativo) => toggleAtivoMutation.mutate({ id: c.id, ativo })}
+                            label={c.ativo ? 'Desativar contato' : 'Ativar contato'}
+                          />
                         </td>
                       </tr>
                     ))}

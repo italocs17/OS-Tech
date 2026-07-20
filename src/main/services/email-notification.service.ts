@@ -9,13 +9,10 @@ import { registrar } from './log.service';
 import type { StatusOS, CreateEventoOSDTO } from '@shared/types/entities.types';
 
 const STATUS_LABELS: Record<StatusOS, string> = {
-  ABERTA: 'Aberta',
-  EM_DIAGNOSTICO: 'Em Diagnostico',
-  AGUARDANDO_APROVACAO: 'Aguardando Aprovacao',
-  AGUARDANDO_PECA: 'Aguardando Peca',
-  EM_EXECUCAO: 'Em Execucao',
+  AGUARDANDO_ATENDIMENTO: 'Aguardando Atendimento',
+  EM_ATENDIMENTO: 'Em Atendimento',
+  PAUSADO: 'Pausado',
   CONCLUIDA: 'Concluida',
-  ENTREGUE: 'Entregue',
   CANCELADA: 'Cancelada',
 };
 

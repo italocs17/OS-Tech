@@ -293,7 +293,8 @@ async function main() {
     prisma.ordemServico.create({
       data: {
         numeroOS: generateSequentialOS(1), clienteId: clientes[0].id, equipamentoId: equipamentos[0].id,
-        status: 'ENTREGUE',
+        status: 'CONCLUIDA',
+        statusLogistico: 'ENTREGUE',
         dataEntrada: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
         dataPrevisao: new Date(Date.now() - 22 * 24 * 60 * 60 * 1000),
         dataConclusao: new Date(Date.now() - 22 * 24 * 60 * 60 * 1000),
@@ -304,6 +305,7 @@ async function main() {
       data: {
         numeroOS: generateSequentialOS(2), clienteId: clientes[0].id, equipamentoId: equipamentos[1].id,
         status: 'CONCLUIDA',
+        statusLogistico: 'RECEBIDO',
         dataEntrada: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000),
         dataPrevisao: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
         dataConclusao: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
@@ -313,7 +315,7 @@ async function main() {
     prisma.ordemServico.create({
       data: {
         numeroOS: generateSequentialOS(3), clienteId: clientes[1].id, equipamentoId: equipamentos[2].id,
-        status: 'EM_EXECUCAO',
+        status: 'EM_ATENDIMENTO',
         dataEntrada: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
         dataPrevisao: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
         observacoes: 'MacBook aquecendo muito. Limpeza e troca de pasta térmica.',
@@ -322,7 +324,7 @@ async function main() {
     prisma.ordemServico.create({
       data: {
         numeroOS: generateSequentialOS(4), clienteId: clientes[2].id, equipamentoId: equipamentos[3].id,
-        status: 'AGUARDANDO_APROVACAO',
+        status: 'EM_ATENDIMENTO',
         dataEntrada: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
         dataPrevisao: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
         observacoes: 'Diagnóstico: HD com setores defeituosos. Aguardando aprovação para troca.',
@@ -331,7 +333,7 @@ async function main() {
     prisma.ordemServico.create({
       data: {
         numeroOS: generateSequentialOS(5), clienteId: clientes[3].id, equipamentoId: equipamentos[5].id,
-        status: 'EM_DIAGNOSTICO',
+        status: 'EM_ATENDIMENTO',
         dataEntrada: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
         dataPrevisao: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
         observacoes: 'Notebook não liga. Em diagnóstico inicial.',
@@ -340,7 +342,7 @@ async function main() {
     prisma.ordemServico.create({
       data: {
         numeroOS: generateSequentialOS(6), clienteId: clientes[3].id, equipamentoId: equipamentos[6].id,
-        status: 'ABERTA',
+        status: 'AGUARDANDO_ATENDIMENTO',
         dataEntrada: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
         dataPrevisao: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
         observacoes: 'Cliente solicitou orçamento para upgrade de memória.',
@@ -350,7 +352,7 @@ async function main() {
       data: {
         numeroOS: generateSequentialOS(7), clienteId: clientes[0].id, equipamentoId: null,
         tipoAtendimento: 'INTERNO',
-        status: 'EM_EXECUCAO',
+        status: 'EM_ATENDIMENTO',
         dataEntrada: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
         dataPrevisao: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
         observacoes: 'Atendimento remoto: cliente solicitou instalação de antivírus e configuração de e-mail.',
@@ -444,7 +446,7 @@ async function main() {
     { dataHora: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000), nivel: 'INFO', categoria: 'OS', acao: 'OS_CRIADA', descricao: 'OS 0002 criada para Pedro Henrique Almeida - Notebook Lenovo ThinkPad T14.', usuarioId: usuarios[2].id },
     { dataHora: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000), nivel: 'INFO', categoria: 'BACKUP', acao: 'BACKUP_CONCLUIDO', descricao: 'Backup automático do banco de dados realizado com sucesso.', usuarioId: usuarios[0].id },
     { dataHora: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000), nivel: 'INFO', categoria: 'CLIENTE', acao: 'CLIENTE_CRIADO', descricao: 'Cliente Ana Beatriz Souza cadastrado.', usuarioId: usuarios[2].id },
-    { dataHora: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), nivel: 'INFO', categoria: 'OS', acao: 'STATUS_ALTERADO', descricao: 'OS 0004 status alterado para AGUARDANDO_APROVACAO. Orçamento enviado ao cliente.', usuarioId: usuarios[3].id },
+    { dataHora: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), nivel: 'INFO', categoria: 'OS', acao: 'STATUS_ALTERADO', descricao: 'OS 0004 status alterado para EM_ATENDIMENTO. Orcamento enviado ao cliente.', usuarioId: usuarios[3].id },
     { dataHora: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), nivel: 'INFO', categoria: 'AUTH', acao: 'LOGIN', descricao: 'Usuário maria.santos realizou login com sucesso.', usuarioId: usuarios[2].id },
   ];
   await prisma.log.createMany({ data: logsData });

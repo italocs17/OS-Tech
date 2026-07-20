@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../../components/layout/page-header';
 import { Modal } from '../../components/shared/modal';
+import { ToggleSwitch } from '../../components/shared/toggle-switch';
 import { useAuth } from '../../lib/auth-context';
 
 interface ClienteContato {
@@ -55,8 +56,8 @@ export function ContactsPage() {
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => window.osTech.email.deleteContato(id),
+  const toggleAtivoMutation = useMutation({
+    mutationFn: ({ id, ativo }: { id: number; ativo: boolean }) => window.osTech.email.updateContato(id, { ativo }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contacts'] }),
   });
 
@@ -135,16 +136,11 @@ export function ContactsPage() {
                       >
                         Editar
                       </button>
-                      <button
-                        onClick={() => {
-                          if (window.confirm('Remover este contato?')) {
-                            deleteMutation.mutate(c.id);
-                          }
-                        }}
-                        className="text-xs text-destructive hover:underline"
-                      >
-                        Remover
-                      </button>
+                      <ToggleSwitch
+                        checked={c.ativo}
+                        onChange={(ativo) => toggleAtivoMutation.mutate({ id: c.id, ativo })}
+                        label={c.ativo ? 'Desativar contato' : 'Ativar contato'}
+                      />
                     </div>
                   </td>
                 )}
