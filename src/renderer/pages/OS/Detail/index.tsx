@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/auth-context';
 import { PageHeader } from '../../../components/layout/page-header';
 import { StatusBadge } from '../../../components/shared/status-badge';
 import { LoadingSpinner } from '../../../components/shared/loading-spinner';
-import { Modal } from '../../../components/shared/modal';
+import { ActionDropdown } from '../../../components/shared/action-dropdown';
 import { FormField } from '../../../components/shared/form-field';
 import { CurrencyInput } from '../../../components/shared/currency-input';
 import { formatDate, formatDateTime, formatCurrency, formatCPF_CNPJ, formatPhone } from '../../../lib/utils';
@@ -36,11 +36,19 @@ export function OSDetailPage() {
   const osId = Number(id);
   const isRestricted = !isProprietario && !isGestor;
 
-  const [statusModal, setStatusModal] = useState(false);
+  const invalidateAllOS = () => {
+    queryClient.invalidateQueries({ queryKey: ['os', osId] });
+    queryClient.invalidateQueries({ queryKey: ['os-list'] });
+    queryClient.invalidateQueries({ queryKey: ['os-eventos', osId] });
+    queryClient.invalidateQueries({ queryKey: ['os-itens', osId] });
+    queryClient.invalidateQueries({ queryKey: ['os-total', osId] });
+    queryClient.invalidateQueries({ queryKey: ['os-inventario', osId] });
+    queryClient.invalidateQueries({ queryKey: ['os-hardware', osId] });
+  };
+
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState('');
-  const [eventModal, setEventModal] = useState(false);
   const [eventDesc, setEventDesc] = useState('');
-  const [itemModal, setItemModal] = useState(false);
   const [itemForm, setItemForm] = useState({
     tipoItem: 'SERVICO' as TipoItem,
     descricao: '',
@@ -48,28 +56,36 @@ export function OSDetailPage() {
     valorUnitario: 0,
   });
 
-  const [discountModal, setDiscountModal] = useState(false);
   const [discountTipo, setDiscountTipo] = useState<TipoDesconto>('ABSOLUTO');
   const [discountValor, setDiscountValor] = useState(0);
   const [discountError, setDiscountError] = useState('');
 
-  const [paymentModal, setPaymentModal] = useState(false);
-
   const [hardwareCollapsed, setHardwareCollapsed] = useState(true);
-  const [hardwareModal, setHardwareModal] = useState(false);
   const [hardwareText, setHardwareText] = useState('');
   const [hardwareError, setHardwareError] = useState('');
 
   const [showAllEvents, setShowAllEvents] = useState(false);
 
-  const [equipmentSelectModal, setEquipmentSelectModal] = useState(false);
   const [showNewEquipmentForm, setShowNewEquipmentForm] = useState(false);
 
   const [actionError, setActionError] = useState('');
 
-  const [pausarModal, setPausarModal] = useState(false);
-  const [retomarModal, setRetomarModal] = useState(false);
   const [justificativa, setJustificativa] = useState('');
+
+  const statusBtnRef = useRef<HTMLButtonElement>(null);
+  const pausarBtnRef = useRef<HTMLButtonElement>(null);
+  const retomarBtnRef = useRef<HTMLButtonElement>(null);
+  const eventoBtnRef = useRef<HTMLButtonElement>(null);
+  const itemBtnRef = useRef<HTMLButtonElement>(null);
+  const equipamentoBtnRef = useRef<HTMLButtonElement>(null);
+  const hardwareBtnRef = useRef<HTMLButtonElement>(null);
+  const pagamentoBtnRef = useRef<HTMLButtonElement>(null);
+  const descontoBtnRef = useRef<HTMLButtonElement>(null);
+
+  const openAction = (name: string) => {
+    setActionError('');
+    setOpenDropdown(name);
+  };
 
   const { data: os, isLoading } = useQuery({
     queryKey: ['os', osId],
@@ -116,16 +132,15 @@ export function OSDetailPage() {
   const { data: clientEquipments = [] } = useQuery({
     queryKey: ['equipment-by-client', clienteId],
     queryFn: () => window.osTech.equipment.listByClient(clienteId),
-    enabled: clienteId > 0 && equipmentSelectModal,
+    enabled: clienteId > 0 && openDropdown === 'equipamento',
   });
 
   const statusMutation = useMutation({
     mutationFn: () =>
       window.osTech.os.changeStatus(osId, selectedStatus, user!.id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['os', osId] });
-      queryClient.invalidateQueries({ queryKey: ['os-list'] });
-      setStatusModal(false);
+      invalidateAllOS();
+      setOpenDropdown(null);
       setActionError('');
     },
     onError: (err: Error) => setActionError(err.message),
@@ -135,8 +150,8 @@ export function OSDetailPage() {
     mutationFn: () =>
       window.osTech.os.addEvent({ osId, usuarioId: user!.id, descricao: eventDesc }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['os-eventos', osId] });
-      setEventModal(false);
+      invalidateAllOS();
+      setOpenDropdown(null);
       setEventDesc('');
       setActionError('');
     },
@@ -146,8 +161,7 @@ export function OSDetailPage() {
   const removeItemMutation = useMutation({
     mutationFn: (itemId: number) => window.osTech.os.removeItem(itemId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['os-itens', osId] });
-      queryClient.invalidateQueries({ queryKey: ['os-total', osId] });
+      invalidateAllOS();
     },
   });
 
@@ -162,9 +176,8 @@ export function OSDetailPage() {
         valorTotal: itemForm.quantidade * itemForm.valorUnitario,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['os-itens', osId] });
-      queryClient.invalidateQueries({ queryKey: ['os-total', osId] });
-      setItemModal(false);
+      invalidateAllOS();
+      setOpenDropdown(null);
       setItemForm({ tipoItem: 'SERVICO', descricao: '', quantidade: 1, valorUnitario: 0 });
       setActionError('');
     },
@@ -175,9 +188,8 @@ export function OSDetailPage() {
     mutationFn: (data: { desconto?: number | null; descontoTipo?: string }) =>
       window.osTech.os.update(osId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['os', osId] });
-      queryClient.invalidateQueries({ queryKey: ['os-total', osId] });
-      setDiscountModal(false);
+      invalidateAllOS();
+      setOpenDropdown(null);
       setDiscountError('');
     },
     onError: (err: Error) => setDiscountError(err.message),
@@ -187,8 +199,8 @@ export function OSDetailPage() {
     mutationFn: (formaPagamento: FormaPagamento | null) =>
       window.osTech.os.update(osId, { formaPagamento }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['os', osId] });
-      setPaymentModal(false);
+      invalidateAllOS();
+      setOpenDropdown(null);
     },
   });
 
@@ -196,9 +208,8 @@ export function OSDetailPage() {
     mutationFn: (equipamentoId: number) =>
       window.osTech.os.update(osId, { equipamentoId }),
     onSuccess: async () => {
-      await queryClient.refetchQueries({ queryKey: ['os', osId] });
-      queryClient.invalidateQueries({ queryKey: ['os-list'] });
-      setEquipmentSelectModal(false);
+      invalidateAllOS();
+      setOpenDropdown(null);
       setShowNewEquipmentForm(false);
     },
   });
@@ -206,9 +217,8 @@ export function OSDetailPage() {
   const pausarMutation = useMutation({
     mutationFn: () => window.osTech.os.pausar(osId, justificativa, user!.id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['os', osId] });
-      queryClient.invalidateQueries({ queryKey: ['os-list'] });
-      setPausarModal(false);
+      invalidateAllOS();
+      setOpenDropdown(null);
       setJustificativa('');
       setActionError('');
     },
@@ -218,9 +228,8 @@ export function OSDetailPage() {
   const retomarMutation = useMutation({
     mutationFn: () => window.osTech.os.retomar(osId, justificativa, user!.id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['os', osId] });
-      queryClient.invalidateQueries({ queryKey: ['os-list'] });
-      setRetomarModal(false);
+      invalidateAllOS();
+      setOpenDropdown(null);
       setJustificativa('');
       setActionError('');
     },
@@ -231,8 +240,7 @@ export function OSDetailPage() {
     mutationFn: (status: StatusLogistico) =>
       window.osTech.os.changeLogisticoStatus(osId, status, user!.id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['os', osId] });
-      queryClient.invalidateQueries({ queryKey: ['os-list'] });
+      invalidateAllOS();
       setActionError('');
     },
     onError: (err: Error) => setActionError(err.message),
@@ -242,9 +250,8 @@ export function OSDetailPage() {
     mutationFn: (data: Record<string, unknown>) =>
       window.osTech.inventory.saveManual(osId, data, user!.id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['os-inventario', osId] });
-      queryClient.invalidateQueries({ queryKey: ['os-hardware', osId] });
-      setHardwareModal(false);
+      invalidateAllOS();
+      setOpenDropdown(null);
       setHardwareError('');
     },
     onError: (err: Error) => setHardwareError(err.message),
@@ -254,7 +261,7 @@ export function OSDetailPage() {
     setDiscountTipo(osData?.descontoTipo || 'ABSOLUTO');
     setDiscountValor(osData?.desconto ?? 0);
     setDiscountError('');
-    setDiscountModal(true);
+    openAction('desconto');
   };
 
   const handleRemoveDiscount = () => {
@@ -584,13 +591,10 @@ export function OSDetailPage() {
             {actionError && (
               <p className="mb-2 text-xs text-destructive">{actionError}</p>
             )}
-            <div className="space-y-2">
+            <div className="space-y-2 relative">
               <button
-                onClick={() => {
-                  setSelectedStatus('');
-                  setActionError('');
-                  setStatusModal(true);
-                }}
+                ref={statusBtnRef}
+                onClick={() => { setSelectedStatus(''); openAction('status'); }}
                 disabled={isTerminal}
                 className="w-full rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               >
@@ -599,11 +603,8 @@ export function OSDetailPage() {
 
               {osData.status === 'EM_ATENDIMENTO' && (
                 <button
-                  onClick={() => {
-                    setJustificativa('');
-                    setActionError('');
-                    setPausarModal(true);
-                  }}
+                  ref={pausarBtnRef}
+                  onClick={() => { setJustificativa(''); openAction('pausar'); }}
                   className="w-full rounded-lg border border-orange-400 px-3 py-2 text-sm font-medium text-orange-700 hover:bg-orange-50"
                 >
                   Pausar OS
@@ -612,11 +613,8 @@ export function OSDetailPage() {
 
               {osData.status === 'PAUSADO' && (
                 <button
-                  onClick={() => {
-                    setJustificativa('');
-                    setActionError('');
-                    setRetomarModal(true);
-                  }}
+                  ref={retomarBtnRef}
+                  onClick={() => { setJustificativa(''); openAction('retomar'); }}
                   className="w-full rounded-lg border border-green-400 px-3 py-2 text-sm font-medium text-green-700 hover:bg-green-50"
                 >
                   Retomar OS
@@ -624,22 +622,19 @@ export function OSDetailPage() {
               )}
 
               <button
-                onClick={() => {
-                  setEventDesc('');
-                  setActionError('');
-                  setEventModal(true);
-                }}
+                ref={eventoBtnRef}
+                onClick={() => { setEventDesc(''); openAction('evento'); }}
                 disabled={isTerminal}
                 className="w-full rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
               >
-                Novo Andamento
+                Novo Evento
               </button>
 
               <button
+                ref={itemBtnRef}
                 onClick={() => {
                   setItemForm({ tipoItem: 'SERVICO', descricao: '', quantidade: 1, valorUnitario: 0 });
-                  setActionError('');
-                  setItemModal(true);
+                  openAction('item');
                 }}
                 disabled={isItemBlocked}
                 className="w-full rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
@@ -648,10 +643,8 @@ export function OSDetailPage() {
               </button>
 
               <button
-                onClick={() => {
-                  setShowNewEquipmentForm(false);
-                  setEquipmentSelectModal(true);
-                }}
+                ref={equipamentoBtnRef}
+                onClick={() => { setShowNewEquipmentForm(false); openAction('equipamento'); }}
                 disabled={isTerminal}
                 className="w-full rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
               >
@@ -659,51 +652,251 @@ export function OSDetailPage() {
               </button>
 
               <button
-                onClick={() => {
-                  setHardwareText('');
-                  setHardwareError('');
-                  setHardwareModal(true);
-                }}
+                ref={hardwareBtnRef}
+                onClick={() => { setHardwareText(''); openAction('hardware'); }}
                 disabled={isTerminal}
                 className="w-full rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
               >
                 Registrar Hardware
               </button>
 
+              {/* Action Dropdowns */}
+              <ActionDropdown open={openDropdown === 'status'} onClose={() => setOpenDropdown(null)} anchorRef={statusBtnRef} title="Alterar Status" width="w-72">
+                <div className="space-y-3">
+                  <select
+                    value={selectedStatus}
+                    onChange={(e) => setSelectedStatus(e.target.value)}
+                    className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="">Selecione...</option>
+                    {STATUS_OS.filter((s) => statusPermitidos.includes(s.value)).map((s) => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                  {selectedStatus === 'CONCLUIDA' && itensList.length === 0 && (
+                    <p className="text-xs text-destructive">Adicione ao menos uma Peça ou Serviço antes de concluir.</p>
+                  )}
+                  <button
+                    onClick={() => statusMutation.mutate()}
+                    disabled={!selectedStatus || !canConcluir || statusMutation.isPending}
+                    className="w-full rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {statusMutation.isPending ? 'Alterando...' : 'Confirmar'}
+                  </button>
+                </div>
+              </ActionDropdown>
+
+              <ActionDropdown open={openDropdown === 'pausar'} onClose={() => setOpenDropdown(null)} anchorRef={pausarBtnRef} title="Pausar OS" width="w-72">
+                <div className="space-y-3">
+                  <textarea
+                    value={justificativa}
+                    onChange={(e) => setJustificativa(e.target.value)}
+                    rows={3}
+                    className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder="Informe o motivo da pausa..."
+                  />
+                  <button
+                    onClick={() => pausarMutation.mutate()}
+                    disabled={!justificativa || justificativa.length < 3 || pausarMutation.isPending}
+                    className="w-full rounded-lg bg-orange-600 px-3 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-50"
+                  >
+                    {pausarMutation.isPending ? 'Pausando...' : 'Pausar'}
+                  </button>
+                </div>
+              </ActionDropdown>
+
+              <ActionDropdown open={openDropdown === 'retomar'} onClose={() => setOpenDropdown(null)} anchorRef={retomarBtnRef} title="Retomar OS" width="w-72">
+                <div className="space-y-3">
+                  <textarea
+                    value={justificativa}
+                    onChange={(e) => setJustificativa(e.target.value)}
+                    rows={3}
+                    className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder="Informe o motivo da retomada..."
+                  />
+                  <button
+                    onClick={() => retomarMutation.mutate()}
+                    disabled={!justificativa || justificativa.length < 3 || retomarMutation.isPending}
+                    className="w-full rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                  >
+                    {retomarMutation.isPending ? 'Retomando...' : 'Retomar'}
+                  </button>
+                </div>
+              </ActionDropdown>
+
+              <ActionDropdown open={openDropdown === 'evento'} onClose={() => setOpenDropdown(null)} anchorRef={eventoBtnRef} title="Novo Evento" width="w-80">
+                <div className="space-y-3">
+                  <textarea
+                    value={eventDesc}
+                    onChange={(e) => setEventDesc(e.target.value)}
+                    className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    rows={4}
+                    placeholder="Descreva o evento..."
+                  />
+                  <button
+                    onClick={() => eventMutation.mutate()}
+                    disabled={!eventDesc.trim() || eventMutation.isPending}
+                    className="w-full rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {eventMutation.isPending ? 'Salvando...' : 'Registrar'}
+                  </button>
+                </div>
+              </ActionDropdown>
+
+              <ActionDropdown open={openDropdown === 'item'} onClose={() => setOpenDropdown(null)} anchorRef={itemBtnRef} title="Adicionar Peça/Serviço" width="w-80">
+                <div className="space-y-3">
+                  <select
+                    value={itemForm.tipoItem}
+                    onChange={(e) => setItemForm({ ...itemForm, tipoItem: e.target.value as TipoItem })}
+                    className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="SERVICO">Serviço</option>
+                    <option value="PECA">Peça</option>
+                  </select>
+                  <input
+                    type="text"
+                    value={itemForm.descricao}
+                    onChange={(e) => setItemForm({ ...itemForm, descricao: e.target.value })}
+                    className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder="Descrição"
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      value={itemForm.quantidade}
+                      onChange={(e) => setItemForm({ ...itemForm, quantidade: Number(e.target.value) || 1 })}
+                      className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      placeholder="Qtd"
+                    />
+                    <CurrencyInput
+                      value={itemForm.valorUnitario}
+                      onChange={(val) => setItemForm({ ...itemForm, valorUnitario: val })}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Total: {formatCurrency(itemForm.quantidade * itemForm.valorUnitario)}
+                  </p>
+                  <button
+                    onClick={() => addItemMutation.mutate()}
+                    disabled={!itemForm.descricao.trim() || addItemMutation.isPending}
+                    className="w-full rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {addItemMutation.isPending ? 'Adicionando...' : 'Adicionar'}
+                  </button>
+                </div>
+              </ActionDropdown>
+
+              <ActionDropdown open={openDropdown === 'equipamento'} onClose={() => { setOpenDropdown(null); setShowNewEquipmentForm(false); }} anchorRef={equipamentoBtnRef} title="Selecionar Equipamento" width="w-96">
+                <div className="space-y-3 max-h-80 overflow-y-auto">
+                  {!showNewEquipmentForm ? (
+                    <>
+                      {(clientEquipments as any[]).length === 0 ? (
+                        <p className="text-sm text-muted-foreground">Nenhum equipamento cadastrado para este cliente.</p>
+                      ) : (
+                        (clientEquipments as any[]).map((eq) => (
+                          <button
+                            key={eq.id}
+                            onClick={() => equipmentMutation.mutate(eq.id)}
+                            disabled={equipmentMutation.isPending}
+                            className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${
+                              (osData as any).equipamentoId === eq.id
+                                ? 'border-primary bg-primary/10'
+                                : 'hover:bg-accent'
+                            } disabled:opacity-50`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium">{eq.marca} {eq.modelo}</span>
+                              <span className="text-xs font-mono bg-muted px-2 py-0.5 rounded">{eq.etiqueta}</span>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                      <button
+                        onClick={() => setShowNewEquipmentForm(true)}
+                        className="w-full rounded-lg border border-dashed px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent"
+                      >
+                        + Cadastrar Equipamento
+                      </button>
+                    </>
+                  ) : (
+                    <EquipmentForm
+                      clientId={clienteId}
+                      onClose={() => setShowNewEquipmentForm(false)}
+                      onSuccess={(newEq: any) => {
+                        equipmentMutation.mutate(newEq.id);
+                        queryClient.invalidateQueries({ queryKey: ['equipment-by-client', clienteId] });
+                      }}
+                    />
+                  )}
+                </div>
+              </ActionDropdown>
+
+              <ActionDropdown open={openDropdown === 'hardware'} onClose={() => setOpenDropdown(null)} anchorRef={hardwareBtnRef} title="Registrar Hardware" width="w-96">
+                <div className="space-y-3">
+                  <textarea
+                    value={hardwareText}
+                    onChange={(e) => setHardwareText(e.target.value)}
+                    className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    rows={10}
+                    placeholder={"Processador: Intel Core i5-10400\nMemória: 16 GB DDR4\nSSD: 480 GB Kingston\n..."}
+                  />
+                  <button
+                    onClick={() => {
+                      hardwareMutation.mutate({
+                        descricao_livre: hardwareText,
+                        data_captura: new Date().toISOString(),
+                      });
+                    }}
+                    disabled={hardwareMutation.isPending || !hardwareText.trim()}
+                    className="w-full rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {hardwareMutation.isPending ? 'Salvando...' : 'Salvar'}
+                  </button>
+                </div>
+              </ActionDropdown>
+            </div>
+          </InfoCard>
+
+          <InfoCard title="Logística">
+            <div className="space-y-2">
+              {osData.statusLogistico === 'PENDENTE' && (
+                <button
+                  onClick={() => logisticoMutation.mutate('RECEBIDO')}
+                  disabled={isTerminal || logisticoMutation.isPending}
+                  className="w-full rounded-lg border border-blue-400 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                >
+                  {logisticoMutation.isPending ? 'Recebendo...' : 'Receber Equipamento'}
+                </button>
+              )}
+              {osData.statusLogistico === 'RECEBIDO' && (
+                <button
+                  onClick={() => logisticoMutation.mutate('ENTREGUE')}
+                  disabled={isTerminal || logisticoMutation.isPending}
+                  className="w-full rounded-lg border border-green-400 px-3 py-2 text-sm font-medium text-green-700 hover:bg-green-50 disabled:opacity-50"
+                >
+                  {logisticoMutation.isPending ? 'Entregando...' : 'Entregar Equipamento'}
+                </button>
+              )}
+              {osData.statusLogistico === 'ENTREGUE' && (
+                <p className="text-xs text-muted-foreground">Equipamento entregue</p>
+              )}
+            </div>
+          </InfoCard>
+
+          <InfoCard title="Financeiro">
+            <div className="space-y-2 relative">
               <button
-                onClick={() => setPaymentModal(true)}
+                ref={pagamentoBtnRef}
+                onClick={() => openAction('pagamento')}
                 disabled={isTerminal}
                 className="w-full rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
               >
                 Pagamento
               </button>
 
-              <div className="border-t pt-2 mt-2">
-                <p className="text-xs font-medium text-muted-foreground mb-2">Logística</p>
-                {osData.statusLogistico === 'PENDENTE' && (
-                  <button
-                    onClick={() => logisticoMutation.mutate('RECEBIDO')}
-                    disabled={isTerminal || logisticoMutation.isPending}
-                    className="w-full rounded-lg border border-blue-400 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
-                  >
-                    {logisticoMutation.isPending ? 'Recebendo...' : 'Receber Equipamento'}
-                  </button>
-                )}
-                {osData.statusLogistico === 'RECEBIDO' && (
-                  <button
-                    onClick={() => logisticoMutation.mutate('ENTREGUE')}
-                    disabled={isTerminal || logisticoMutation.isPending}
-                    className="w-full rounded-lg border border-green-400 px-3 py-2 text-sm font-medium text-green-700 hover:bg-green-50 disabled:opacity-50"
-                  >
-                    {logisticoMutation.isPending ? 'Entregando...' : 'Entregar Equipamento'}
-                  </button>
-                )}
-                {osData.statusLogistico === 'ENTREGUE' && (
-                  <p className="text-xs text-muted-foreground">Equipamento entregue</p>
-                )}
-              </div>
-
               <button
+                ref={descontoBtnRef}
                 onClick={handleOpenDiscount}
                 disabled={isDiscountBlocked || isRestricted}
                 className="w-full rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
@@ -718,6 +911,106 @@ export function OSDetailPage() {
                   Remover Desconto
                 </button>
               )}
+
+              <ActionDropdown open={openDropdown === 'pagamento'} onClose={() => setOpenDropdown(null)} anchorRef={pagamentoBtnRef} title="Forma de Pagamento" width="w-72">
+                <div className="space-y-2">
+                  {FORMAS_PAGAMENTO.map((fp) => (
+                    <button
+                      key={fp.value}
+                      onClick={() => paymentMutation.mutate(fp.value)}
+                      disabled={isTerminal || isRestricted || paymentMutation.isPending}
+                      className={`w-full rounded-lg border px-3 py-2 text-sm font-medium text-left transition-colors ${
+                        osData.formaPagamento === fp.value
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'hover:bg-accent'
+                      } disabled:opacity-50`}
+                    >
+                      {fp.label}
+                    </button>
+                  ))}
+                  {osData.formaPagamento && !isTerminal && !isRestricted && (
+                    <button
+                      onClick={() => paymentMutation.mutate(null)}
+                      disabled={paymentMutation.isPending}
+                      className="w-full rounded-lg border border-destructive px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10"
+                    >
+                      Remover Pagamento
+                    </button>
+                  )}
+                </div>
+              </ActionDropdown>
+
+              <ActionDropdown open={openDropdown === 'desconto'} onClose={() => setOpenDropdown(null)} anchorRef={descontoBtnRef} title="Desconto" width="w-72">
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setDiscountTipo('ABSOLUTO'); setDiscountValor(0); }}
+                      className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium ${
+                        discountTipo === 'ABSOLUTO'
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'hover:bg-accent'
+                      }`}
+                    >
+                      R$
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setDiscountTipo('PERCENTUAL'); setDiscountValor(0); }}
+                      className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium ${
+                        discountTipo === 'PERCENTUAL'
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'hover:bg-accent'
+                      }`}
+                    >
+                      %
+                    </button>
+                  </div>
+                  {discountTipo === 'ABSOLUTO' ? (
+                    <CurrencyInput
+                      value={discountValor}
+                      onChange={(val) => setDiscountValor(val)}
+                    />
+                  ) : (
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.01}
+                        value={discountValor || ''}
+                        onChange={(e) => setDiscountValor(Number(e.target.value) || 0)}
+                        className="w-full rounded-lg border bg-background px-3 py-2 pr-7 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                        placeholder="0"
+                      />
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+                    </div>
+                  )}
+                  {discountValor > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Subtotal: {formatCurrency(itensList.reduce((s, i) => s + i.valorTotal, 0))}
+                      {' → '}
+                      <span className="font-semibold text-destructive">
+                        Total: {formatCurrency(
+                          discountTipo === 'PERCENTUAL'
+                            ? itensList.reduce((s, i) => s + i.valorTotal, 0) * (1 - discountValor / 100)
+                            : itensList.reduce((s, i) => s + i.valorTotal, 0) - discountValor
+                        )}
+                      </span>
+                    </p>
+                  )}
+                  <button
+                    onClick={() => discountMutation.mutate({
+                      desconto: discountValor || 0,
+                      descontoTipo: discountValor > 0 ? discountTipo : undefined,
+                    })}
+                    disabled={discountMutation.isPending}
+                    className="w-full rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {discountMutation.isPending ? 'Salvando...' : 'Confirmar'}
+                  </button>
+                </div>
+              </ActionDropdown>
             </div>
           </InfoCard>
 
@@ -732,400 +1025,6 @@ export function OSDetailPage() {
         </div>
       </div>
 
-      {/* Status Modal */}
-      <Modal open={statusModal} title="Alterar Status" onClose={() => setStatusModal(false)}>
-        <div className="space-y-4">
-          <FormField label="Novo Status">
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="">Selecione...</option>
-              {STATUS_OS.filter((s) => statusPermitidos.includes(s.value)).map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </FormField>
-          {selectedStatus === 'CONCLUIDA' && itensList.length === 0 && (
-            <p className="text-sm text-destructive">Adicione ao menos uma Peça ou Serviço antes de concluir a OS.</p>
-          )}
-          {actionError && <p className="text-sm text-destructive">{actionError}</p>}
-          <div className="flex justify-end gap-2">
-            <button onClick={() => setStatusModal(false)} className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-accent">
-              Cancelar
-            </button>
-            <button
-              onClick={() => statusMutation.mutate()}
-              disabled={!selectedStatus || !canConcluir || statusMutation.isPending}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              {statusMutation.isPending ? 'Alterando...' : 'Confirmar'}
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Pausar Modal */}
-      <Modal open={pausarModal} title="Pausar OS" onClose={() => setPausarModal(false)} size="sm">
-        <div className="space-y-4">
-          <FormField label="Justificativa">
-            <textarea
-              value={justificativa}
-              onChange={(e) => setJustificativa(e.target.value)}
-              rows={3}
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="Informe o motivo da pausa..."
-            />
-          </FormField>
-          {actionError && <p className="text-sm text-destructive">{actionError}</p>}
-          <div className="flex justify-end gap-2">
-            <button onClick={() => setPausarModal(false)} className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-accent">
-              Cancelar
-            </button>
-            <button
-              onClick={() => pausarMutation.mutate()}
-              disabled={!justificativa || justificativa.length < 3 || pausarMutation.isPending}
-              className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-50"
-            >
-              {pausarMutation.isPending ? 'Pausando...' : 'Pausar'}
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Retomar Modal */}
-      <Modal open={retomarModal} title="Retomar OS" onClose={() => setRetomarModal(false)} size="sm">
-        <div className="space-y-4">
-          <FormField label="Justificativa">
-            <textarea
-              value={justificativa}
-              onChange={(e) => setJustificativa(e.target.value)}
-              rows={3}
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="Informe o motivo da retomada..."
-            />
-          </FormField>
-          {actionError && <p className="text-sm text-destructive">{actionError}</p>}
-          <div className="flex justify-end gap-2">
-            <button onClick={() => setRetomarModal(false)} className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-accent">
-              Cancelar
-            </button>
-            <button
-              onClick={() => retomarMutation.mutate()}
-              disabled={!justificativa || justificativa.length < 3 || retomarMutation.isPending}
-              className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
-            >
-              {retomarMutation.isPending ? 'Retomando...' : 'Retomar'}
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Add Item Modal */}
-      <Modal open={itemModal} title="Adicionar Peça/Serviço" onClose={() => setItemModal(false)} size="sm">
-        <div className="space-y-4">
-          <FormField label="Tipo">
-            <select
-              value={itemForm.tipoItem}
-              onChange={(e) => setItemForm({ ...itemForm, tipoItem: e.target.value as TipoItem })}
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="SERVICO">Serviço</option>
-              <option value="PECA">Peça</option>
-            </select>
-          </FormField>
-
-          <FormField label="Descrição">
-            <input
-              type="text"
-              value={itemForm.descricao}
-              onChange={(e) => setItemForm({ ...itemForm, descricao: e.target.value })}
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-          </FormField>
-
-          <div className="grid grid-cols-2 gap-4">
-            <FormField label="Quantidade">
-              <input
-                type="number"
-                min={1}
-                value={itemForm.quantidade}
-                onChange={(e) => setItemForm({ ...itemForm, quantidade: Number(e.target.value) || 1 })}
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </FormField>
-
-            <FormField label="Valor Unitário (R$)">
-              <CurrencyInput
-                value={itemForm.valorUnitario}
-                onChange={(val) => setItemForm({ ...itemForm, valorUnitario: val })}
-              />
-            </FormField>
-          </div>
-
-          <p className="text-sm text-muted-foreground">
-            Total: {formatCurrency(itemForm.quantidade * itemForm.valorUnitario)}
-          </p>
-
-          {actionError && <p className="text-sm text-destructive">{actionError}</p>}
-
-          <div className="flex justify-end gap-2">
-            <button onClick={() => setItemModal(false)} className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-accent">
-              Cancelar
-            </button>
-            <button
-              onClick={() => addItemMutation.mutate()}
-              disabled={!itemForm.descricao.trim() || addItemMutation.isPending}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              {addItemMutation.isPending ? 'Adicionando...' : 'Adicionar'}
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Discount Modal */}
-      <Modal open={discountModal} title="Desconto" onClose={() => setDiscountModal(false)} size="sm">
-        <div className="space-y-4">
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => { setDiscountTipo('ABSOLUTO'); setDiscountValor(0); }}
-              className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium ${
-                discountTipo === 'ABSOLUTO'
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'hover:bg-accent'
-              }`}
-            >
-              R$
-            </button>
-            <button
-              type="button"
-              onClick={() => { setDiscountTipo('PERCENTUAL'); setDiscountValor(0); }}
-              className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium ${
-                discountTipo === 'PERCENTUAL'
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'hover:bg-accent'
-              }`}
-            >
-              %
-            </button>
-          </div>
-
-          <FormField label={discountTipo === 'ABSOLUTO' ? 'Valor (R$)' : 'Percentual (%)'}>
-            {discountTipo === 'ABSOLUTO' ? (
-              <CurrencyInput
-                value={discountValor}
-                onChange={(val) => setDiscountValor(val)}
-              />
-            ) : (
-              <div className="relative">
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={0.01}
-                  value={discountValor || ''}
-                  onChange={(e) => setDiscountValor(Number(e.target.value) || 0)}
-                  className="w-full rounded-lg border bg-background px-3 py-2 pr-7 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="0"
-                />
-                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                  %
-                </span>
-              </div>
-            )}
-          </FormField>
-
-          {discountValor > 0 && (
-            <p className="text-sm text-muted-foreground">
-              Subtotal: {formatCurrency(itensList.reduce((s, i) => s + i.valorTotal, 0))}
-              {' → '}
-              <span className="font-semibold text-destructive">
-                Total: {formatCurrency(
-                  discountTipo === 'PERCENTUAL'
-                    ? itensList.reduce((s, i) => s + i.valorTotal, 0) * (1 - discountValor / 100)
-                    : itensList.reduce((s, i) => s + i.valorTotal, 0) - discountValor
-                )}
-              </span>
-            </p>
-          )}
-
-          {discountError && <p className="text-sm text-destructive">{discountError}</p>}
-
-          <div className="flex justify-end gap-2">
-            <button onClick={() => setDiscountModal(false)} className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-accent">
-              Cancelar
-            </button>
-            <button
-              onClick={() => discountMutation.mutate({
-                desconto: discountValor || 0,
-                descontoTipo: discountValor > 0 ? discountTipo : undefined,
-              })}
-              disabled={discountMutation.isPending}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              {discountMutation.isPending ? 'Salvando...' : 'Confirmar'}
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Event Modal */}
-      <Modal open={eventModal} title="Novo Andamento" onClose={() => setEventModal(false)}>
-        <div className="space-y-4">
-          <FormField label="Descrição do Andamento">
-            <textarea
-              value={eventDesc}
-              onChange={(e) => setEventDesc(e.target.value)}
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              rows={4}
-              placeholder="Descreva o andamento..."
-            />
-          </FormField>
-          {actionError && <p className="text-sm text-destructive">{actionError}</p>}
-          <div className="flex justify-end gap-2">
-            <button onClick={() => setEventModal(false)} className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-accent">
-              Cancelar
-            </button>
-            <button
-              onClick={() => eventMutation.mutate()}
-              disabled={!eventDesc.trim() || eventMutation.isPending}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              {eventMutation.isPending ? 'Salvando...' : 'Registrar'}
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Hardware Modal */}
-      <Modal open={hardwareModal} title="Registrar Hardware" onClose={() => setHardwareModal(false)} size="lg">
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Descreva livremente as configurações de hardware do equipamento:
-          </p>
-          <textarea
-            value={hardwareText}
-            onChange={(e) => setHardwareText(e.target.value)}
-            className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            rows={14}
-            placeholder={"Processador: Intel Core i5-10400\nMemória: 16 GB DDR4\nSSD: 480 GB Kingston\nPlaca de Vídeo: GTX 1660\n..."}
-          />
-
-          {hardwareError && <p className="text-sm text-destructive">{hardwareError}</p>}
-
-          <div className="flex justify-end gap-2">
-            <button onClick={() => setHardwareModal(false)} className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-accent">
-              Cancelar
-            </button>
-            <button
-              onClick={() => {
-                hardwareMutation.mutate({
-                  descricao_livre: hardwareText,
-                  data_captura: new Date().toISOString(),
-                });
-              }}
-              disabled={hardwareMutation.isPending || !hardwareText.trim()}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              {hardwareMutation.isPending ? 'Salvando...' : 'Salvar'}
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Payment Modal */}
-      <Modal open={paymentModal} title="Forma de Pagamento" onClose={() => setPaymentModal(false)} size="sm">
-        <div className="space-y-3">
-          {FORMAS_PAGAMENTO.map((fp) => (
-            <button
-              key={fp.value}
-              onClick={() => paymentMutation.mutate(fp.value)}
-              disabled={isTerminal || isRestricted || paymentMutation.isPending}
-              className={`w-full rounded-lg border px-4 py-3 text-sm font-medium text-left transition-colors ${
-                osData.formaPagamento === fp.value
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'hover:bg-accent'
-              } disabled:opacity-50`}
-            >
-              {fp.label}
-            </button>
-          ))}
-          {osData.formaPagamento && !isTerminal && !isRestricted && (
-            <button
-              onClick={() => paymentMutation.mutate(null)}
-              disabled={paymentMutation.isPending}
-              className="w-full rounded-lg border border-destructive px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/10"
-            >
-              Remover Pagamento
-            </button>
-          )}
-        </div>
-      </Modal>
-
-      {/* Equipment Selection Modal */}
-      <Modal
-        open={equipmentSelectModal}
-        title="Selecionar Equipamento"
-        onClose={() => { setEquipmentSelectModal(false); setShowNewEquipmentForm(false); }}
-        size="lg"
-      >
-        <div className="space-y-4">
-          {!showNewEquipmentForm ? (
-            <>
-              {(clientEquipments as any[]).length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nenhum equipamento cadastrado para este cliente.</p>
-              ) : (
-                <div className="space-y-2">
-                  {(clientEquipments as any[]).map((eq) => (
-                    <button
-                      key={eq.id}
-                      onClick={() => equipmentMutation.mutate(eq.id)}
-                      disabled={equipmentMutation.isPending}
-                      className={`w-full rounded-lg border px-4 py-3 text-left transition-colors ${
-                        (osData as any).equipamentoId === eq.id
-                          ? 'border-primary bg-primary/10'
-                          : 'hover:bg-accent'
-                      } disabled:opacity-50`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="text-sm font-medium">{eq.marca} {eq.modelo}</span>
-                          <span className="ml-2 text-xs text-muted-foreground">({eq.tipo})</span>
-                        </div>
-                        <span className="text-xs font-mono font-medium bg-muted px-2 py-0.5 rounded">
-                          {eq.etiqueta}
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-              <button
-                onClick={() => setShowNewEquipmentForm(true)}
-                className="w-full rounded-lg border border-dashed px-4 py-3 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              >
-                + Cadastrar Equipamento
-              </button>
-            </>
-          ) : (
-            <div className="space-y-4">
-              <EquipmentForm
-                clientId={clienteId}
-                onClose={() => setShowNewEquipmentForm(false)}
-                onSuccess={(newEq: any) => {
-                  equipmentMutation.mutate(newEq.id);
-                  queryClient.invalidateQueries({ queryKey: ['equipment-by-client', clienteId] });
-                }}
-              />
-            </div>
-          )}
-        </div>
-      </Modal>
     </div>
   );
 }

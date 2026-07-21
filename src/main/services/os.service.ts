@@ -293,10 +293,14 @@ export class OSService {
 
     const osAtualizada = await this.repository.update(id, { statusLogistico: validated.status } as any);
 
+    const descricoes: Record<string, string> = {
+      RECEBIDO: 'Em posse do equipamento',
+      ENTREGUE: 'Equipamento Entregue',
+    };
     await this.eventoRepository.create({
       osId: id,
       usuarioId,
-      descricao: `Status logistico alterado de ${statusAtual} para ${validated.status}`,
+      descricao: descricoes[validated.status] ?? `Status logistico alterado de ${statusAtual} para ${validated.status}`,
     });
 
     await registrar({

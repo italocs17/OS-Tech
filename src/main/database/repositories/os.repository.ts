@@ -15,7 +15,7 @@ export class OrdemServicoRepository {
         eventos: { orderBy: { dataHora: 'asc' } },
         itens: true,
       },
-      orderBy: { dataEntrada: 'asc' },
+      orderBy: { dataEntrada: 'desc' },
     });
   }
 

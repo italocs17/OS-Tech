@@ -33,6 +33,7 @@ const menuItems: MenuEntry[] = [
     perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'],
     children: [
       { to: '/clients', label: 'Clientes', icon: '👥', perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'] },
+      { to: '/catalog?tab=categorias', label: 'Categorias', icon: '🏷️', perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'] },
       { to: '/equipment', label: 'Equipamentos', icon: '🖥️', perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'] },
       { to: '/contacts', label: 'Contatos', icon: '📇', perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'] },
       { to: '/catalog', label: 'Catálogo', icon: '📦' },

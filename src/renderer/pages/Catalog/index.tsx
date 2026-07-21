@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { PageHeader } from '../../components/layout/page-header';
 import { DataTable, type Column } from '../../components/shared/data-table';
 import { LoadingSpinner } from '../../components/shared/loading-spinner';
@@ -54,7 +55,14 @@ interface SubcategoriaServicoRow {
 }
 
 export function CatalogPage() {
-  const [tab, setTab] = useState<Tab>('servicos');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = (searchParams.get('tab') as Tab) || 'servicos';
+  const [tab, setTab] = useState<Tab>(initialTab);
+
+  const handleTabChange = (newTab: Tab) => {
+    setTab(newTab);
+    setSearchParams({ tab: newTab });
+  };
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -307,7 +315,7 @@ export function CatalogPage() {
         {(['servicos', 'pecas', 'categorias', 'subcategorias'] as Tab[]).map((t) => (
           <button
             key={t}
-            onClick={() => { setTab(t); setSearchQuery(''); setFilterCategoriaId(''); setFilterSubcategoriaId(''); }}
+            onClick={() => { handleTabChange(t); setSearchQuery(''); setFilterCategoriaId(''); setFilterSubcategoriaId(''); }}
             className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
               tab === t
                 ? 'border-primary text-primary'
