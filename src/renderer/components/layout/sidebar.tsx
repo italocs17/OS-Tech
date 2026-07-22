@@ -14,42 +14,56 @@ interface MenuItem {
   perfis?: PerfilUsuario[];
 }
 
+interface MenuSeparator {
+  type: 'separator';
+}
+
 interface MenuGroup {
   type: 'group';
   label: string;
   icon: string;
   perfis?: PerfilUsuario[];
-  children: MenuItem[];
+  children: (MenuItem | MenuSeparator)[];
 }
 
 type MenuEntry = MenuItem | MenuGroup;
 
 const menuItems: MenuEntry[] = [
   { to: '/', label: 'Dashboard', icon: '📊' },
+  { to: '/os', label: 'Ordens de Serviço', icon: '📋' },
+  { to: '/email-inbox', label: 'Chamados', icon: '💬', perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'] },
   {
     type: 'group',
     label: 'Cadastro',
     icon: '📁',
     perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'],
     children: [
-      { to: '/clients', label: 'Clientes', icon: '👥', perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'] },
-      { to: '/catalog?tab=categorias', label: 'Categorias', icon: '🏷️', perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'] },
-      { to: '/equipment', label: 'Equipamentos', icon: '🖥️', perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'] },
-      { to: '/contacts', label: 'Contatos', icon: '📇', perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'] },
-      { to: '/catalog', label: 'Catálogo', icon: '📦' },
-      { to: '/users', label: 'Usuários', icon: '🔐', perfis: ['PROPRIETARIO', 'GESTOR'] },
       { to: '/equipes', label: 'Equipes', icon: '🏢', perfis: ['PROPRIETARIO', 'GESTOR'] },
+      { to: '/users', label: 'Usuários', icon: '🔐', perfis: ['PROPRIETARIO', 'GESTOR'] },
+      { type: 'separator' },
+      { to: '/clients', label: 'Clientes e Contatos', icon: '👥', perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'] },
+      { to: '/equipment', label: 'Equipamentos', icon: '🖥️', perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'] },
+      { type: 'separator' },
+      { to: '/catalog?tab=categorias', label: 'Categorias', icon: '🏷️', perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'] },
+      { to: '/catalog?tab=servicos', label: 'Serviços', icon: '🔧', perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'] },
+      { to: '/catalog?tab=pecas', label: 'Peças', icon: '🔩', perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'] },
     ],
   },
-  { to: '/os', label: 'Ordens de Serviço', icon: '📋' },
   { to: '/reports', label: 'Relatórios', icon: '📈', perfis: ['PROPRIETARIO', 'GESTOR'] },
-  { to: '/backup', label: 'Backup', icon: '💾', perfis: ['PROPRIETARIO'] },
-  { to: '/email-inbox', label: 'Chamados', icon: '💬', perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'] },
   { to: '/logs', label: 'Auditoria', icon: '📝', perfis: ['PROPRIETARIO', 'GESTOR'] },
+  { to: '/backup', label: 'Backup', icon: '💾', perfis: ['PROPRIETARIO'] },
 ];
 
 function isGroup(entry: MenuEntry): entry is MenuGroup {
   return 'type' in entry && entry.type === 'group';
+}
+
+function isSeparator(entry: MenuItem | MenuSeparator): entry is MenuSeparator {
+  return 'type' in entry && entry.type === 'separator';
+}
+
+function isMenuItem(entry: MenuItem | MenuSeparator): entry is MenuItem {
+  return 'to' in entry;
 }
 
 export function Sidebar() {
@@ -108,7 +122,9 @@ export function Sidebar() {
       <nav className="flex-1 space-y-1 p-4 overflow-y-auto">
         {visibleItems.map((entry) => {
           if (isGroup(entry)) {
-            const visibleChildren = entry.children.filter(isItemVisible);
+            const visibleChildren = entry.children.filter(
+              (child) => isSeparator(child) || isItemVisible(child)
+            );
             if (visibleChildren.length === 0) return null;
             const isExpanded = expandedGroups[entry.label] ?? false;
             return (
@@ -131,23 +147,28 @@ export function Sidebar() {
                 </button>
                 {isExpanded && (
                   <div className="ml-4 space-y-1">
-                    {visibleChildren.map((child) => (
-                      <NavLink
-                        key={child.to}
-                        to={child.to}
-                        className={({ isActive }) =>
-                          cn(
-                            'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                            isActive
-                              ? 'bg-primary text-primary-foreground'
-                              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                          )
-                        }
-                      >
-                        <span>{child.icon}</span>
-                        <span>{child.label}</span>
-                      </NavLink>
-                    ))}
+                    {visibleChildren.map((child, idx) => {
+                      if (isSeparator(child)) {
+                        return <hr key={`sep-${idx}`} className="my-1 border-border" />;
+                      }
+                      return (
+                        <NavLink
+                          key={child.to}
+                          to={child.to}
+                          className={({ isActive }) =>
+                            cn(
+                              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                              isActive
+                                ? 'bg-primary text-primary-foreground'
+                                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                            )
+                          }
+                        >
+                          <span>{child.icon}</span>
+                          <span>{child.label}</span>
+                        </NavLink>
+                      );
+                    })}
                   </div>
                 )}
               </div>

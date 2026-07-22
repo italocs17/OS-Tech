@@ -11,6 +11,8 @@ export const emailAPI = {
   convertToOS: (data: unknown) => ipcRenderer.invoke(IPC_CHANNELS.EMAIL.CONVERT_TO_OS, data),
   reject: (id: number, usuarioId: number, motivo?: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.EMAIL.REJECT, id, usuarioId, motivo),
+  revisar: (id: number, usuarioId: number) =>
+    ipcRenderer.invoke(IPC_CHANNELS.EMAIL.REVISAR, id, usuarioId),
   conciliar: (solicitacaoOrigemId: number, solicitacaoDestinoId: number, usuarioId: number) =>
     ipcRenderer.invoke(IPC_CHANNELS.EMAIL.CONCILIAR, solicitacaoOrigemId, solicitacaoDestinoId, usuarioId),
   configGet: () => ipcRenderer.invoke(IPC_CHANNELS.EMAIL.CONFIG_GET),
@@ -21,4 +23,5 @@ export const emailAPI = {
     ipcRenderer.invoke(IPC_CHANNELS.EMAIL.UPDATE_CONTATO, id, data),
   deleteContato: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.EMAIL.DELETE_CONTATO, id),
   listAttachments: (emailSolicitacaoId: number) => ipcRenderer.invoke(IPC_CHANNELS.EMAIL.LIST_ATTACHMENTS, emailSolicitacaoId),
+  listAttachmentsByOs: (osId: number) => ipcRenderer.invoke(IPC_CHANNELS.EMAIL.LIST_ATTACHMENTS_BY_OS, osId),
 };

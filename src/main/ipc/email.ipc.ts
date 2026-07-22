@@ -43,6 +43,10 @@ export function registerEmailIpcHandlers() {
     return solicitacaoService.reject(id, usuarioId, motivo);
   });
 
+  ipcMain.handle(IPC_CHANNELS.EMAIL.REVISAR, async (_, id: number, usuarioId: number) => {
+    return solicitacaoService.revisar(id, usuarioId);
+  });
+
   ipcMain.handle(IPC_CHANNELS.EMAIL.CONCILIAR, async (_, solicitacaoOrigemId: number, solicitacaoDestinoId: number, usuarioId: number) => {
     return solicitacaoService.conciliar(solicitacaoOrigemId, solicitacaoDestinoId, usuarioId);
   });
@@ -74,5 +78,9 @@ export function registerEmailIpcHandlers() {
 
   ipcMain.handle(IPC_CHANNELS.EMAIL.LIST_ATTACHMENTS, async (_, emailSolicitacaoId: number) => {
     return solicitacaoService.listAnexos(emailSolicitacaoId);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.EMAIL.LIST_ATTACHMENTS_BY_OS, async (_, osId: number) => {
+    return solicitacaoService.listAnexosByOsId(osId);
   });
 }

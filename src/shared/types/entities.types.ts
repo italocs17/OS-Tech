@@ -565,6 +565,7 @@ export interface UpdateEmailSolicitacaoDTO {
   usuarioAprovadorId?: number;
   dataProcessamento?: Date;
   observacoes?: string | null;
+  corpoTexto?: string;
 }
 
 export interface EmailConfig {

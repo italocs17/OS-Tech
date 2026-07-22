@@ -87,6 +87,14 @@ export function EmailInboxPage() {
     },
   });
 
+  const revisarMutation = useMutation({
+    mutationFn: (id: number) => window.osTech.email.revisar(id, user?.id || 0),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email-solicitacoes'] });
+      queryClient.invalidateQueries({ queryKey: ['email-pending'] });
+    },
+  });
+
   const items = Array.isArray(solicitacoes) ? solicitacoes : [];
 
   const filteredItems = useMemo(() => {
@@ -129,6 +137,12 @@ export function EmailInboxPage() {
   const handleReject = (id: number) => {
     if (window.confirm('Rejeitar esta solicitacao?')) {
       rejectMutation.mutate({ id });
+    }
+  };
+
+  const handleRevisar = (id: number) => {
+    if (window.confirm('Revisar esta solicitacao rejeitada?')) {
+      revisarMutation.mutate(id);
     }
   };
 
@@ -205,6 +219,7 @@ export function EmailInboxPage() {
               onLinkClient={handleLinkClient}
               onConvert={handleConvert}
               onReject={handleReject}
+              onRevisar={handleRevisar}
               onConciliar={handleConciliar}
             />
           ))
@@ -220,6 +235,7 @@ export function EmailInboxPage() {
       {linkingId && (
         <LinkClientModal
           solicitacaoId={linkingId}
+          emailRemetente={items.find((i) => i.id === linkingId)?.emailRemetente || ''}
           open={linkModalOpen}
           onClose={() => { setLinkModalOpen(false); setLinkingId(null); }}
         />

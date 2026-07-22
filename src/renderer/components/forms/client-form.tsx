@@ -91,7 +91,10 @@ export function ClientForm({ client, onClose, onSuccess, showContatos = true }: 
   const set = (field: keyof CreateClienteDTO, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value || undefined }));
 
+  const canAddContato = contatos.length === 0 || (contatos[contatos.length - 1].nome.trim() && contatos[contatos.length - 1].email.trim());
+
   const addContato = () => {
+    if (!canAddContato) return;
     setContatos((prev) => [...prev, { nome: '', email: '', telefone: '' }]);
   };
 
@@ -191,7 +194,8 @@ export function ClientForm({ client, onClose, onSuccess, showContatos = true }: 
             <button
               type="button"
               onClick={addContato}
-              className="text-xs text-primary hover:underline"
+              disabled={!canAddContato}
+              className="text-xs text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
             >
               + Adicionar Contato
             </button>

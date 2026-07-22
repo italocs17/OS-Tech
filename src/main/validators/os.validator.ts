@@ -14,7 +14,7 @@ export const createOSSchema = z.object({
   clienteId: z.number().int().positive('ID do cliente e obrigatorio'),
   equipamentoId: z.number().int().positive().optional(),
   contatoId: z.number().int().positive().optional(),
-  categoriaServicoId: z.number().int().positive('Categoria do servico e obrigatoria'),
+  categoriaServicoId: z.number().int().positive().optional(),
   tipoAtendimento: z.enum(['INTERNO', 'EXTERNO']).optional(),
   observacoes: z.preprocess(
     (v) => (v === '' ? undefined : v),

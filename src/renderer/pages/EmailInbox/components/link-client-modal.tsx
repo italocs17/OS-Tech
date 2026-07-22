@@ -13,11 +13,12 @@ interface ClientOption {
 
 interface LinkClientModalProps {
   solicitacaoId: number;
+  emailRemetente: string;
   open: boolean;
   onClose: () => void;
 }
 
-export function LinkClientModal({ solicitacaoId, open, onClose }: LinkClientModalProps) {
+export function LinkClientModal({ solicitacaoId, emailRemetente, open, onClose }: LinkClientModalProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
@@ -25,6 +26,11 @@ export function LinkClientModal({ solicitacaoId, open, onClose }: LinkClientModa
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState('');
   const [showNewClientForm, setShowNewClientForm] = useState(false);
+  const [selectedContatoEmail, setSelectedContatoEmail] = useState('');
+
+  const emailMatch = selectedContatoEmail
+    ? selectedContatoEmail.toLowerCase() === emailRemetente.toLowerCase()
+    : true;
 
   const { data: clients, isLoading } = useQuery({
     queryKey: ['clients'],
@@ -146,7 +152,10 @@ export function LinkClientModal({ solicitacaoId, open, onClose }: LinkClientModa
                     className={`w-full px-3 py-2 text-left text-sm transition-colors hover:bg-accent ${
                       selectedContatoId === c.id ? 'bg-accent font-medium' : ''
                     }`}
-                    onClick={() => setSelectedContatoId(c.id)}
+                    onClick={() => {
+                      setSelectedContatoId(c.id);
+                      setSelectedContatoEmail(c.email);
+                    }}
                   >
                     {c.nome} — {c.email}
                   </button>
@@ -160,6 +169,18 @@ export function LinkClientModal({ solicitacaoId, open, onClose }: LinkClientModa
           <p className="text-sm text-red-600">{error}</p>
         )}
 
+        <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+          <p className="text-xs font-medium text-blue-700">E-mail do remetente: <strong>{emailRemetente}</strong></p>
+        </div>
+
+        {selectedContatoId && !emailMatch && (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
+            <p className="text-xs font-medium text-amber-700">
+              O e-mail do contato selecionado ({selectedContatoEmail}) nao corresponde ao e-mail do remetente.
+            </p>
+          </div>
+        )}
+
         <div className="flex justify-end gap-2">
           <button
             onClick={onClose}
@@ -169,7 +190,7 @@ export function LinkClientModal({ solicitacaoId, open, onClose }: LinkClientModa
           </button>
           <button
             onClick={handleLink}
-            disabled={!selectedClientId || !selectedContatoId || linkMutation.isPending}
+            disabled={!selectedClientId || !selectedContatoId || !emailMatch || linkMutation.isPending}
             className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
             {linkMutation.isPending ? 'Vinculando...' : 'Vincular'}

@@ -142,6 +142,9 @@ export class OSService {
     const os = await this.getById(id);
 
     if (validated.status === 'CONCLUIDA') {
+      if (!os.categoriaServicoId) {
+        throw new Error('A OS precisa ter uma Categoria do Serviço atribuída antes de ser concluída');
+      }
       const itens = await this.itemRepository.findByOSId(id);
       if (itens.length === 0) {
         throw new Error('Adicione ao menos uma Peça ou Serviço antes de concluir a OS');

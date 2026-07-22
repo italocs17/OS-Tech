@@ -63,13 +63,20 @@ function startEmailPolling() {
   const check = async () => {
     try {
       const result = await emailService.checkMail();
-      if (result && result.novas > 0 && mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('email:new-found', result.novas);
+      if (result.novas > 0) {
+        console.log(`[EmailPolling] ${result.novas} novo(s) email(s) encontrado(s)`);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('email:new-found', result.novas);
+        }
+      }
+      if (result.erros?.length > 0) {
+        console.warn(`[EmailPolling] ${result.erros.length} erro(s):`, result.erros);
       }
     } catch (err) {
       console.error('[EmailPolling] Erro na verificacao automatica:', err);
     }
   };
+  check();
   emailPollTimer = setInterval(check, EMAIL_POLL_INTERVAL);
 }
 

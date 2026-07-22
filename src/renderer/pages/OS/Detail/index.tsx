@@ -14,7 +14,7 @@ import { EquipmentForm } from '../../../components/forms/equipment-form';
 import type {
   OrdemServico, EventoOS, ItemOS, TipoItem,
   TipoDesconto, FormaPagamento, TipoAtendimento, InventarioHardware,
-  StatusOS, StatusLogistico,
+  StatusOS, StatusLogistico, CategoriaServico,
 } from '@shared/types/entities.types';
 
 const FORMAS_PAGAMENTO: { value: FormaPagamento; label: string }[] = [
@@ -78,6 +78,7 @@ export function OSDetailPage() {
   const eventoBtnRef = useRef<HTMLButtonElement>(null);
   const itemBtnRef = useRef<HTMLButtonElement>(null);
   const equipamentoBtnRef = useRef<HTMLButtonElement>(null);
+  const categoriaBtnRef = useRef<HTMLButtonElement>(null);
   const hardwareBtnRef = useRef<HTMLButtonElement>(null);
   const pagamentoBtnRef = useRef<HTMLButtonElement>(null);
   const descontoBtnRef = useRef<HTMLButtonElement>(null);
@@ -128,12 +129,27 @@ export function OSDetailPage() {
   });
   const hardwareList = hardwareListRaw as any[];
 
+  const hasEmailSolicitacao = !!(osData as any)?.emailSolicitacao?.length;
+  const { data: emailAttachmentsRaw = [] } = useQuery({
+    queryKey: ['os-email-attachments', osId],
+    queryFn: () => window.osTech.email.listAttachmentsByOs(osId),
+    enabled: !!osId && hasEmailSolicitacao,
+  });
+  const emailAttachments = emailAttachmentsRaw as any[];
+
   const clienteId = (osData as any)?.clienteId ?? 0;
   const { data: clientEquipments = [] } = useQuery({
     queryKey: ['equipment-by-client', clienteId],
     queryFn: () => window.osTech.equipment.listByClient(clienteId),
     enabled: clienteId > 0 && openDropdown === 'equipamento',
   });
+
+  const { data: categoriasData } = useQuery({
+    queryKey: ['categorias-servico'],
+    queryFn: () => window.osTech.categoriaServico.list(),
+    enabled: openDropdown === 'categoria',
+  });
+  const categoriasList = Array.isArray(categoriasData) ? (categoriasData as CategoriaServico[]) : [];
 
   const statusMutation = useMutation({
     mutationFn: () =>
@@ -214,6 +230,15 @@ export function OSDetailPage() {
     },
   });
 
+  const categoriaMutation = useMutation({
+    mutationFn: (categoriaServicoId: number) =>
+      window.osTech.os.update(osId, { categoriaServicoId }),
+    onSuccess: () => {
+      invalidateAllOS();
+      setOpenDropdown(null);
+    },
+  });
+
   const pausarMutation = useMutation({
     mutationFn: () => window.osTech.os.pausar(osId, justificativa, user!.id),
     onSuccess: () => {
@@ -274,7 +299,7 @@ export function OSDetailPage() {
   const isTerminal = ['CONCLUIDA', 'CANCELADA'].includes(osData.status);
   const isItemBlocked = ['CONCLUIDA', 'CANCELADA'].includes(osData.status);
   const isDiscountBlocked = ['CONCLUIDA', 'CANCELADA'].includes(osData.status);
-  const canConcluir = selectedStatus !== 'CONCLUIDA' || itensList.length > 0;
+  const canConcluir = selectedStatus !== 'CONCLUIDA' || (itensList.length > 0 && !!(osData as any).categoriaServicoId);
   const hasDesconto = osData.desconto != null && osData.desconto > 0;
 
   const TRANSICOES_PERMITIDAS: Record<string, string[]> = {
@@ -438,6 +463,25 @@ export function OSDetailPage() {
               </div>
             </div>
           </InfoCard>
+
+          {emailAttachments.length > 0 && (
+            <InfoCard title="Anexos do E-mail">
+              <div className="space-y-1">
+                {emailAttachments.map((anexo: any) => (
+                  <div key={anexo.id} className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
+                    <span className="text-sm">📎</span>
+                    <span className="text-sm font-medium">{anexo.nomeArquivo}</span>
+                    <span className="text-xs text-muted-foreground">
+                      ({anexo.tamanho < 1024 ? `${anexo.tamanho} B` : anexo.tamanho < 1048576 ? `${(anexo.tamanho / 1024).toFixed(1)} KB` : `${(anexo.tamanho / 1048576).toFixed(1)} MB`})
+                    </span>
+                    {anexo.mimeType && (
+                      <span className="text-xs text-muted-foreground">{anexo.mimeType}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </InfoCard>
+          )}
 
           <InfoCard title="Hardware">
             <div className="space-y-3">
@@ -652,6 +696,15 @@ export function OSDetailPage() {
               </button>
 
               <button
+                ref={categoriaBtnRef}
+                onClick={() => openAction('categoria')}
+                disabled={isTerminal}
+                className="w-full rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
+              >
+                Categoria do Serviço
+              </button>
+
+              <button
                 ref={hardwareBtnRef}
                 onClick={() => { setHardwareText(''); openAction('hardware'); }}
                 disabled={isTerminal}
@@ -675,6 +728,9 @@ export function OSDetailPage() {
                   </select>
                   {selectedStatus === 'CONCLUIDA' && itensList.length === 0 && (
                     <p className="text-xs text-destructive">Adicione ao menos uma Peça ou Serviço antes de concluir.</p>
+                  )}
+                  {selectedStatus === 'CONCLUIDA' && !(osData as any).categoriaServicoId && (
+                    <p className="text-xs text-destructive">A OS precisa ter uma Categoria do Serviço atribuída antes de ser concluída.</p>
                   )}
                   <button
                     onClick={() => statusMutation.mutate()}
@@ -828,6 +884,29 @@ export function OSDetailPage() {
                         queryClient.invalidateQueries({ queryKey: ['equipment-by-client', clienteId] });
                       }}
                     />
+                  )}
+                </div>
+              </ActionDropdown>
+
+              <ActionDropdown open={openDropdown === 'categoria'} onClose={() => setOpenDropdown(null)} anchorRef={categoriaBtnRef} title="Categoria do Serviço" width="w-96">
+                <div className="space-y-3 max-h-80 overflow-y-auto">
+                  {categoriasList.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Nenhuma categoria disponível.</p>
+                  ) : (
+                    categoriasList.map((cat) => (
+                      <button
+                        key={cat.id}
+                        onClick={() => categoriaMutation.mutate(cat.id)}
+                        disabled={categoriaMutation.isPending}
+                        className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${
+                          (osData as any).categoriaServicoId === cat.id
+                            ? 'border-primary bg-primary/10'
+                            : 'hover:bg-accent'
+                        } disabled:opacity-50`}
+                      >
+                        <span className="text-sm font-medium">{cat.nome}</span>
+                      </button>
+                    ))
                   )}
                 </div>
               </ActionDropdown>

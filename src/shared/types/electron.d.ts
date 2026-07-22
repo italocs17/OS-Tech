@@ -95,6 +95,7 @@ export interface EmailAPI {
   linkClient: (data: unknown) => Promise<unknown>;
   convertToOS: (data: unknown) => Promise<unknown>;
   reject: (id: number, usuarioId: number, motivo?: string) => Promise<unknown>;
+  revisar: (id: number, usuarioId: number) => Promise<unknown>;
   conciliar: (solicitacaoOrigemId: number, solicitacaoDestinoId: number, usuarioId: number) => Promise<unknown>;
   configGet: () => Promise<unknown>;
   configSave: (config: unknown) => Promise<unknown>;
@@ -105,6 +106,7 @@ export interface EmailAPI {
   updateContato: (id: number, data: unknown) => Promise<unknown>;
   deleteContato: (id: number) => Promise<unknown>;
   listAttachments: (emailSolicitacaoId: number) => Promise<unknown>;
+  listAttachmentsByOs: (osId: number) => Promise<unknown>;
 }
 
 export interface ServicoAPI {

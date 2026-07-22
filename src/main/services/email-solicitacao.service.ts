@@ -1,4 +1,5 @@
 import { EmailRepository } from '../database/repositories/email.repository';
+import { ClienteContatoRepository } from '../database/repositories/cliente-contato.repository';
 import { OSService } from './os.service';
 import { registrar } from './log.service';
 import { linkClientSchema, convertToOSSchema } from '../validators/email.validator';
@@ -6,6 +7,7 @@ import type { LinkClientDTO, ConvertToOSDTO } from '@shared/types/entities.types
 
 export class EmailSolicitacaoService {
   private repository = new EmailRepository();
+  private contatoRepository = new ClienteContatoRepository();
   private osService = new OSService();
 
   async list() {
@@ -30,6 +32,12 @@ export class EmailSolicitacaoService {
     const validated = linkClientSchema.parse(data);
 
     const solicitacao = await this.getById(validated.solicitacaoId);
+
+    const contato = await this.contatoRepository.findById(validated.contatoId);
+    if (!contato) throw new Error('Contato nao encontrado');
+    if (contato.email.toLowerCase() !== solicitacao.emailRemetente.toLowerCase()) {
+      throw new Error('O e-mail do contato nao corresponde ao e-mail do remetente do chamado');
+    }
 
     const updated = await this.repository.update(validated.solicitacaoId, {
       clienteId: validated.clienteId,
@@ -60,6 +68,13 @@ export class EmailSolicitacaoService {
     }
     if (!solicitacao.clienteId) {
       throw new Error('Solicitacao deve estar vinculada a um cliente');
+    }
+
+    if (solicitacao.contatoId) {
+      const contato = await this.contatoRepository.findById(solicitacao.contatoId);
+      if (contato && contato.email.toLowerCase() !== solicitacao.emailRemetente.toLowerCase()) {
+        throw new Error('O e-mail do contato vinculado nao corresponde ao remetente do chamado');
+      }
     }
 
     const observacoes = [
@@ -127,8 +142,44 @@ export class EmailSolicitacaoService {
     return updated;
   }
 
+  async revisar(id: number, usuarioId: number) {
+    const solicitacao = await this.getById(id);
+
+    if (solicitacao.status !== 'REJEITADO') {
+      throw new Error('Apenas solicitacoes rejeitadas podem ser revistas');
+    }
+
+    const novoStatus = (solicitacao.clienteId || solicitacao.contatoId)
+      ? 'AGUARDANDO_ATENDIMENTO'
+      : 'NAO_CADASTRADO';
+
+    const updated = await this.repository.update(id, {
+      status: novoStatus,
+      usuarioAprovadorId: usuarioId,
+      dataProcessamento: new Date(),
+      observacoes: null,
+    });
+
+    await registrar({
+      nivel: 'INFO',
+      categoria: 'OS',
+      acao: 'EMAIL_REVISAR',
+      descricao: `Solicitacao de email #${solicitacao.id} revista — movida para ${novoStatus}`,
+      usuarioId,
+      dadosContexto: { solicitacaoId: id, novoStatus },
+    });
+
+    return updated;
+  }
+
   async listAnexos(emailSolicitacaoId: number) {
     return this.repository.listAnexos(emailSolicitacaoId);
+  }
+
+  async listAnexosByOsId(osId: number) {
+    const solicitacao = await this.repository.findByOsId(osId);
+    if (!solicitacao) return [];
+    return this.repository.listAnexos(solicitacao.id);
   }
 
   async conciliar(solicitacaoOrigemId: number, solicitacaoDestinoId: number, usuarioId: number) {

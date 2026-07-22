@@ -35,6 +35,10 @@ export class EmailRepository {
     return prisma.emailSolicitacao.findUnique({ where: { mensagemId } });
   }
 
+  async findByOsId(osId: number) {
+    return prisma.emailSolicitacao.findFirst({ where: { osId } });
+  }
+
   async countByStatus(status: string) {
     return prisma.emailSolicitacao.count({
       where: { status: status as any },

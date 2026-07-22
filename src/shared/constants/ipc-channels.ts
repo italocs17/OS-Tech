@@ -105,6 +105,7 @@ export const IPC_CHANNELS = {
     LINK_CLIENT: 'email:link-client',
     CONVERT_TO_OS: 'email:convert-to-os',
     REJECT: 'email:reject',
+    REVISAR: 'email:revisar',
     CONCILIAR: 'email:conciliar',
     CONFIG_GET: 'email:config-get',
     CONFIG_SAVE: 'email:config-save',
@@ -115,6 +116,7 @@ export const IPC_CHANNELS = {
     UPDATE_CONTATO: 'email:update-contato',
     DELETE_CONTATO: 'email:delete-contato',
     LIST_ATTACHMENTS: 'email:list-attachments',
+    LIST_ATTACHMENTS_BY_OS: 'email:list-attachments-by-os',
   },
   REPORT: {
     PDF: 'report:pdf',

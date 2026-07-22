@@ -65,7 +65,7 @@ export function OSForm({ onClose }: OSFormProps) {
         clienteId,
         equipamentoId: equipamentoId || undefined,
         contatoId: contatoId || undefined,
-        categoriaServicoId,
+        categoriaServicoId: categoriaServicoId || undefined,
         tipoAtendimento,
         observacoes: observacoes || undefined,
       }, user!.id),
@@ -86,7 +86,6 @@ export function OSForm({ onClose }: OSFormProps) {
 
     const newErrors: Record<string, string> = {};
     if (!clienteId) newErrors.clienteId = 'Selecione um cliente';
-    if (!categoriaServicoId) newErrors.categoriaServicoId = 'Selecione uma categoria';
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -164,7 +163,7 @@ export function OSForm({ onClose }: OSFormProps) {
         </select>
       </FormField>
 
-      <FormField label="Categoria do Serviço" required error={errors.categoriaServicoId}>
+      <FormField label="Categoria do Serviço" error={errors.categoriaServicoId}>
         <select
           value={categoriaServicoId}
           onChange={(e) => setCategoriaServicoId(Number(e.target.value))}

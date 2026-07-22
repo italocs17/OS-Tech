@@ -16,6 +16,7 @@ interface EmailCardProps {
   onLinkClient?: (id: number) => void;
   onConvert?: (id: number) => void;
   onReject?: (id: number) => void;
+  onRevisar?: (id: number) => void;
   onConciliar?: (id: number) => void;
 }
 
@@ -26,7 +27,7 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
   REJEITADO: { label: 'Rejeitado', color: 'text-red-600 bg-red-50 border-red-200' },
 };
 
-export function EmailCard({ item, onView, onLinkClient, onConvert, onReject, onConciliar }: EmailCardProps) {
+export function EmailCard({ item, onView, onLinkClient, onConvert, onReject, onRevisar, onConciliar }: EmailCardProps) {
   const statusInfo = STATUS_MAP[item.status] || { label: item.status, color: 'text-gray-600 bg-gray-50 border-gray-200' };
 
   return (
@@ -74,6 +75,14 @@ export function EmailCard({ item, onView, onLinkClient, onConvert, onReject, onC
               className="rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
             >
               Rejeitar
+            </button>
+          )}
+          {item.status === 'REJEITADO' && onRevisar && (
+            <button
+              onClick={() => onRevisar(item.id)}
+              className="rounded-md px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50"
+            >
+              Revisar
             </button>
           )}
           {(item.status === 'NAO_CADASTRADO' || item.status === 'AGUARDANDO_ATENDIMENTO') && onConciliar && (
