@@ -7,6 +7,7 @@ import type { LogFiltros } from '../../main/services/log.service';
 
 export interface ClientAPI {
   list: () => Promise<unknown>;
+  listAll: () => Promise<unknown>;
   get: (id: number) => Promise<unknown>;
   create: (data: unknown) => Promise<unknown>;
   update: (id: number, data: unknown) => Promise<unknown>;
@@ -102,6 +103,7 @@ export interface EmailAPI {
   listByStatus: (status: string) => Promise<unknown>;
   countPending: () => Promise<unknown>;
   listContatos: (clienteId: number) => Promise<unknown>;
+  listAllContatos: (clienteId: number) => Promise<unknown>;
   createContato: (data: unknown) => Promise<unknown>;
   updateContato: (id: number, data: unknown) => Promise<unknown>;
   deleteContato: (id: number) => Promise<unknown>;

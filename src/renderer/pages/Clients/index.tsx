@@ -17,6 +17,7 @@ interface ClienteRow {
   telefone: string | null;
   email: string | null;
   dataCadastro: string | Date;
+  ativo?: boolean;
 }
 
 interface Contato {
@@ -38,19 +39,56 @@ export function ClientsPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const { data: clients, isLoading } = useQuery({
-    queryKey: ['clients'],
-    queryFn: () => window.osTech.client.list(),
+    queryKey: ['clients-all'],
+    queryFn: () => window.osTech.client.listAll(),
   });
 
   const columns: Column<ClienteRow>[] = [
-    { key: 'nome', header: 'Nome' },
-    { key: 'cpfCnpj', header: 'CPF/CNPJ' },
-    { key: 'telefone', header: 'Telefone' },
-    { key: 'email', header: 'E-mail' },
+    {
+      key: 'nome',
+      header: 'Nome',
+      render: (item) => (
+        <span className={cn(!(item as ClienteRow).ativo && 'opacity-50 italic')}>
+          {(item as ClienteRow).nome}
+          {!(item as ClienteRow).ativo && <span className="ml-2 text-xs text-muted-foreground">(inativo)</span>}
+        </span>
+      ),
+    },
+    {
+      key: 'cpfCnpj',
+      header: 'CPF/CNPJ',
+      render: (item) => (
+        <span className={cn(!(item as ClienteRow).ativo && 'opacity-50')}>
+          {(item as ClienteRow).cpfCnpj}
+        </span>
+      ),
+    },
+    {
+      key: 'telefone',
+      header: 'Telefone',
+      render: (item) => (
+        <span className={cn(!(item as ClienteRow).ativo && 'opacity-50')}>
+          {(item as ClienteRow).telefone || '-'}
+        </span>
+      ),
+    },
+    {
+      key: 'email',
+      header: 'E-mail',
+      render: (item) => (
+        <span className={cn(!(item as ClienteRow).ativo && 'opacity-50')}>
+          {(item as ClienteRow).email || '-'}
+        </span>
+      ),
+    },
     {
       key: 'dataCadastro',
       header: 'Cadastro',
-      render: (item) => formatDate(item.dataCadastro),
+      render: (item) => (
+        <span className={cn(!(item as ClienteRow).ativo && 'opacity-50')}>
+          {formatDate((item as ClienteRow).dataCadastro)}
+        </span>
+      ),
     },
   ];
 
@@ -87,7 +125,7 @@ export function ClientsPage() {
     if (!editingClient && cliente?.id) {
       setEditingClient(cliente as Cliente);
     }
-    queryClient.invalidateQueries({ queryKey: ['clients'] });
+    queryClient.invalidateQueries({ queryKey: ['clients-all'] });
   };
 
   return (
@@ -168,7 +206,7 @@ function TabbedClientDetail({
     mutationFn: ({ id, ativo }: { id: number; ativo: boolean }) =>
       window.osTech.client.update(id, { ativo }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['clients-all'] });
     },
   });
 
@@ -265,8 +303,8 @@ function ContatosTab({ clienteId }: { clienteId: number }) {
   const [error, setError] = useState('');
 
   const { data: contatos, isLoading } = useQuery({
-    queryKey: ['cliente-contatos', clienteId],
-    queryFn: () => window.osTech.email.listContatos(clienteId) as Promise<Contato[]>,
+    queryKey: ['cliente-contatos-all', clienteId],
+    queryFn: () => window.osTech.email.listAllContatos(clienteId) as Promise<Contato[]>,
   });
 
   useEffect(() => {
@@ -281,7 +319,7 @@ function ContatosTab({ clienteId }: { clienteId: number }) {
     mutationFn: (data: { clienteId: number; nome: string; email: string; telefone?: string }) =>
       window.osTech.email.createContato(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cliente-contatos', clienteId] });
+      queryClient.invalidateQueries({ queryKey: ['cliente-contatos-all', clienteId] });
       setFormOpen(false);
     },
     onError: (err: any) => setError(err?.message || 'Erro ao criar contato'),
@@ -291,7 +329,7 @@ function ContatosTab({ clienteId }: { clienteId: number }) {
     mutationFn: ({ id, data }: { id: number; data: Partial<Contato> }) =>
       window.osTech.email.updateContato(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cliente-contatos', clienteId] });
+      queryClient.invalidateQueries({ queryKey: ['cliente-contatos-all', clienteId] });
       setFormOpen(false);
     },
     onError: (err: any) => setError(err?.message || 'Erro ao atualizar contato'),
@@ -301,7 +339,7 @@ function ContatosTab({ clienteId }: { clienteId: number }) {
     mutationFn: ({ id, ativo }: { id: number; ativo: boolean }) =>
       window.osTech.email.updateContato(id, { ativo }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cliente-contatos', clienteId] });
+      queryClient.invalidateQueries({ queryKey: ['cliente-contatos-all', clienteId] });
     },
   });
 
@@ -428,14 +466,18 @@ function ContatosTab({ clienteId }: { clienteId: number }) {
             </thead>
             <tbody className="divide-y">
               {items.map((c: Contato) => (
-                <tr key={c.id} className="hover:bg-muted/50">
-                  <td className="px-4 py-2 text-sm">{c.nome}</td>
+                <tr key={c.id} className={cn('hover:bg-muted/50', !c.ativo && 'opacity-50')}>
+                  <td className="px-4 py-2 text-sm">
+                    {c.nome}
+                    {!c.ativo && <span className="ml-2 text-xs text-muted-foreground">(inativo)</span>}
+                  </td>
                   <td className="px-4 py-2 text-sm">{c.email}</td>
                   <td className="px-4 py-2 text-sm">{c.telefone || '-'}</td>
                   <td className="px-4 py-2 text-right">
                     <button
                       onClick={() => handleEdit(c)}
-                      className="mr-2 text-xs text-blue-600 hover:underline"
+                      disabled={!c.ativo}
+                      className="mr-2 text-xs text-blue-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Editar
                     </button>

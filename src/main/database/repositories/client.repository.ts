@@ -14,6 +14,12 @@ export class ClienteRepository {
     });
   }
 
+  async findAll() {
+    return prisma.cliente.findMany({
+      orderBy: { nome: 'asc' },
+    });
+  }
+
   async findById(id: number) {
     return prisma.cliente.findUnique({
       where: { id },

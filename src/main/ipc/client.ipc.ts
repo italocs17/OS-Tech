@@ -14,6 +14,10 @@ export function registerClientIpcHandlers() {
     return clientService.list();
   });
 
+  ipcMain.handle(IPC_CHANNELS.CLIENT.LIST_ALL, async () => {
+    return clientService.listAll();
+  });
+
   ipcMain.handle(IPC_CHANNELS.CLIENT.GET, async (_, id: number) => {
     return clientService.getById(id);
   });

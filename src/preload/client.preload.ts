@@ -8,6 +8,7 @@ import { IPC_CHANNELS } from '@shared/constants/ipc-channels';
 
 export const clientAPI = {
   list: () => ipcRenderer.invoke(IPC_CHANNELS.CLIENT.LIST),
+  listAll: () => ipcRenderer.invoke(IPC_CHANNELS.CLIENT.LIST_ALL),
   get: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.CLIENT.GET, id),
   create: (data: unknown) => ipcRenderer.invoke(IPC_CHANNELS.CLIENT.CREATE, data),
   update: (id: number, data: unknown) =>

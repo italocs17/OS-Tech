@@ -9,6 +9,13 @@ export class ClienteContatoRepository {
     });
   }
 
+  async findAll(clienteId: number) {
+    return prisma.clienteContato.findMany({
+      where: { clienteId },
+      orderBy: { nome: 'asc' },
+    });
+  }
+
   async findById(id: number) {
     return prisma.clienteContato.findUnique({ where: { id } });
   }

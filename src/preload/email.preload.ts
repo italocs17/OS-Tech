@@ -18,6 +18,7 @@ export const emailAPI = {
   configGet: () => ipcRenderer.invoke(IPC_CHANNELS.EMAIL.CONFIG_GET),
   configSave: (config: unknown) => ipcRenderer.invoke(IPC_CHANNELS.EMAIL.CONFIG_SAVE, config),
   listContatos: (clienteId: number) => ipcRenderer.invoke(IPC_CHANNELS.EMAIL.LIST_CONTATOS, clienteId),
+  listAllContatos: (clienteId: number) => ipcRenderer.invoke(IPC_CHANNELS.EMAIL.LIST_ALL_CONTATOS, clienteId),
   createContato: (data: unknown) => ipcRenderer.invoke(IPC_CHANNELS.EMAIL.CREATE_CONTATO, data),
   updateContato: (id: number, data: unknown) =>
     ipcRenderer.invoke(IPC_CHANNELS.EMAIL.UPDATE_CONTATO, id, data),

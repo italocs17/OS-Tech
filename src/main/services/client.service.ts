@@ -19,6 +19,10 @@ export class ClienteService {
     return this.repository.findMany();
   }
 
+  async listAll() {
+    return this.repository.findAll();
+  }
+
   async getById(id: number) {
     const cliente = await this.repository.findById(id);
     if (!cliente) throw new Error('Cliente nao encontrado');

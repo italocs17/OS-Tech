@@ -118,8 +118,9 @@ PENDENTE ──→ RECEBIDO ──→ ENTREGUE ──→ (terminal)
 | R1 | CPF/CNPJ único, validação algorítmica (módulo 11) |
 | R2 | CNPJ alfanumérico (IN RFB 2.229/2024) |
 | R3 | Contato padrão automático (primeiro contato válido = isPadrao) |
-| R4 | Soft delete (toggle ativo/inativo) |
+| R4 | Soft delete (toggle ativo/inativo) — inativos visíveis com esmaecimento, sem edição |
 | R5 | CPF/CNPJ imutável na atualização |
+| R6 | Dual listing: list() = ativos (dropdowns), listAll() = todos (gestão) |
 
 ### 4.3 Equipamento
 
@@ -186,6 +187,8 @@ PENDENTE ──→ RECEBIDO ──→ ENTREGUE ──→ (terminal)
 | R13 | Validação de e-mail na conversão: `convertToOS()` re-verifica se `contato.email` corresponde ao remetente (defesa em profundidade) |
 | R14 | Polling de e-mail: `checkMail()` inicializa `checking = false`, executa em try/finally — primeira verificação imediata no startup (não espera 60s) |
 | R15 | Ação "Revisar": move email REJEITADO → AGUARDANDO_ATENDIMENTO (se tem cliente vinculado) ou NAO_CADASTRADO (se não) |
+| R16 | Validação de ativo no vínculo: `linkClient()` rejeita contato inativo |
+| R17 | Validação de ativo na conversão: `convertToOS()` rejeita contato inativo vinculado |
 
 ### 4.9 E-mail (Notificações SMTP)
 
@@ -313,7 +316,7 @@ PENDENTE ──→ RECEBIDO ──→ ENTREGUE ──→ (terminal)
 | Validação dupla | Zod no main process + validação manual no frontend |
 | Soft delete | Cliente, Equipamento, Serviço, Peca, Categoria, Subcategoria, Equipe, Usuario, ClienteContato |
 | Hard delete | OS, ItemOS, Inventario, EventoOS (imutável) |
-| Dual listing | list() = ativos, listAll() = todos (catálogo) |
+| Dual listing | list() = ativos (dropdowns), listAll() = todos (gestão) — Cliente, Contato, catálogo |
 | z.preprocess | Converte "" → undefined para compatibilidade com formulários HTML |
 | Fire-and-forget | Notificações por email nunca bloqueiam o fluxo principal |
 | invalidateAllOS() | Após cada mutation na OS, invalida as 7 queries relacionadas atomicamente |
@@ -340,3 +343,4 @@ PENDENTE ──→ RECEBIDO ──→ ENTREGUE ──→ (terminal)
 | 12 | reparseEmailBody depende de conexão IMAP ativa — pode falhar se caixa indisponível |
 | 13 | Clientes: modal tabulado (Dados + Contatos) substituiu páginas separadas — ContactsPage removida |
 | 14 | Sidebar: "Contatos" removido como item independente — gerenciamento integrado ao modal do cliente |
+| 15 | Dual listing: list() retorna apenas ativos (dropdowns), listAll() retorna todos (gestão) — inativos esmaecidos na UI |

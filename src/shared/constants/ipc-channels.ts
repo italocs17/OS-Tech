@@ -7,6 +7,7 @@
 export const IPC_CHANNELS = {
   CLIENT: {
     LIST: 'client:list',
+    LIST_ALL: 'client:list-all',
     GET: 'client:get',
     CREATE: 'client:create',
     UPDATE: 'client:update',
@@ -112,6 +113,7 @@ export const IPC_CHANNELS = {
     LIST_BY_STATUS: 'email:list-by-status',
     COUNT_PENDING: 'email:count-pending',
     LIST_CONTATOS: 'email:list-contatos',
+    LIST_ALL_CONTATOS: 'email:list-all-contatos',
     CREATE_CONTATO: 'email:create-contato',
     UPDATE_CONTATO: 'email:update-contato',
     DELETE_CONTATO: 'email:delete-contato',

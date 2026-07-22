@@ -64,6 +64,10 @@ export function registerEmailIpcHandlers() {
     return contatoRepository.findMany(clienteId);
   });
 
+  ipcMain.handle(IPC_CHANNELS.EMAIL.LIST_ALL_CONTATOS, async (_, clienteId: number) => {
+    return contatoRepository.findAll(clienteId);
+  });
+
   ipcMain.handle(IPC_CHANNELS.EMAIL.CREATE_CONTATO, async (_, data) => {
     return contatoRepository.create(data);
   });

@@ -35,6 +35,7 @@ export class EmailSolicitacaoService {
 
     const contato = await this.contatoRepository.findById(validated.contatoId);
     if (!contato) throw new Error('Contato nao encontrado');
+    if (contato.ativo === false) throw new Error('Contato inativo nao pode ser vinculado a chamados');
     if (contato.email.toLowerCase() !== solicitacao.emailRemetente.toLowerCase()) {
       throw new Error('O e-mail do contato nao corresponde ao e-mail do remetente do chamado');
     }
@@ -72,6 +73,9 @@ export class EmailSolicitacaoService {
 
     if (solicitacao.contatoId) {
       const contato = await this.contatoRepository.findById(solicitacao.contatoId);
+      if (contato && contato.ativo === false) {
+        throw new Error('Contato vinculado esta inativo — reative antes de converter');
+      }
       if (contato && contato.email.toLowerCase() !== solicitacao.emailRemetente.toLowerCase()) {
         throw new Error('O e-mail do contato vinculado nao corresponde ao remetente do chamado');
       }
