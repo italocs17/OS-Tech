@@ -6,6 +6,7 @@
 import { EquipamentoRepository } from '../database/repositories/equipment.repository';
 import { createEquipmentSchema, updateEquipmentSchema } from '../validators/equipment.validator';
 import { gerarEtiqueta } from './etiqueta.service';
+import { registrar } from './log.service';
 import type { CreateEquipamentoDTO, UpdateEquipamentoDTO } from '@shared/types/entities.types';
 
 export class EquipamentoService {
@@ -13,6 +14,10 @@ export class EquipamentoService {
 
   async list() {
     return this.repository.findMany();
+  }
+
+  async listAll() {
+    return this.repository.findAll();
   }
 
   async getById(id: number) {
@@ -39,9 +44,19 @@ export class EquipamentoService {
   }
 
   async update(id: number, data: UpdateEquipamentoDTO) {
-    await this.getById(id);
+    const atual = await this.getById(id);
     const validated = updateEquipmentSchema.parse(data);
-    return this.repository.update(id, validated);
+    const resultado = await this.repository.update(id, validated);
+    if (validated.ativo !== undefined && validated.ativo !== atual.ativo) {
+      await registrar({
+        nivel: 'INFO',
+        categoria: 'CLIENTE',
+        acao: 'TOGGLE_ATIVO',
+        descricao: `Equipamento "${atual.etiqueta}" ${validated.ativo ? 'ativado' : 'desativado'}`,
+        dadosContexto: { entidade: 'EQUIPAMENTO', entidadeId: id, ativo: validated.ativo },
+      });
+    }
+    return resultado;
   }
 
   async delete(id: number) {

@@ -16,6 +16,7 @@ export const IPC_CHANNELS = {
   },
   EQUIPMENT: {
     LIST: 'equipment:list',
+    LIST_ALL: 'equipment:list-all',
     GET: 'equipment:get',
     GET_BY_TAG: 'equipment:get-by-tag',
     CREATE: 'equipment:create',
@@ -46,6 +47,7 @@ export const IPC_CHANNELS = {
   },
   USER: {
     LIST: 'user:list',
+    LIST_ALL: 'user:list-all',
     GET: 'user:get',
     CREATE: 'user:create',
     UPDATE: 'user:update',
@@ -72,6 +74,7 @@ export const IPC_CHANNELS = {
   },
   SERVICO: {
     LIST: 'servico:list',
+    LIST_ALL: 'servico:list-all',
     GET: 'servico:get',
     CREATE: 'servico:create',
     UPDATE: 'servico:update',
@@ -79,6 +82,7 @@ export const IPC_CHANNELS = {
   },
   CATEGORIA_SERVICO: {
     LIST: 'categoria-servico:list',
+    LIST_ALL: 'categoria-servico:list-all',
     GET: 'categoria-servico:get',
     CREATE: 'categoria-servico:create',
     UPDATE: 'categoria-servico:update',
@@ -86,6 +90,7 @@ export const IPC_CHANNELS = {
   },
   SUBCATEGORIA_SERVICO: {
     LIST: 'subcategoria-servico:list',
+    LIST_ALL: 'subcategoria-servico:list-all',
     GET: 'subcategoria-servico:get',
     GET_BY_CATEGORIA: 'subcategoria-servico:get-by-categoria',
     CREATE: 'subcategoria-servico:create',
@@ -94,6 +99,7 @@ export const IPC_CHANNELS = {
   },
   PECA: {
     LIST: 'peca:list',
+    LIST_ALL: 'peca:list-all',
     GET: 'peca:get',
     CREATE: 'peca:create',
     UPDATE: 'peca:update',
@@ -134,6 +140,7 @@ export const IPC_CHANNELS = {
   },
   EQUIPE: {
     LIST: 'equipe:list',
+    LIST_ALL: 'equipe:list-all',
     GET: 'equipe:get',
     CREATE: 'equipe:create',
     UPDATE: 'equipe:update',

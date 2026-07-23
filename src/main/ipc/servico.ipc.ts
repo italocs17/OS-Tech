@@ -9,6 +9,10 @@ export function registerServicoIpcHandlers() {
     return servicoService.list();
   });
 
+  ipcMain.handle(IPC_CHANNELS.SERVICO.LIST_ALL, async () => {
+    return servicoService.listAll();
+  });
+
   ipcMain.handle(IPC_CHANNELS.SERVICO.GET, async (_, id: number) => {
     return servicoService.getById(id);
   });

@@ -6,6 +6,7 @@
 import { OrdemServicoRepository } from '../database/repositories/os.repository';
 import { EventoOSRepository } from '../database/repositories/evento.repository';
 import { ItemOSRepository } from '../database/repositories/item-os.repository';
+import { CategoriaServicoRepository } from '../database/repositories/categoria-servico.repository';
 import { proximoNumeroOS } from './numero-os.service';
 import { registrar } from './log.service';
 import { EmailNotificationService } from './email-notification.service';
@@ -39,6 +40,7 @@ export class OSService {
   private repository = new OrdemServicoRepository();
   private eventoRepository = new EventoOSRepository();
   private itemRepository = new ItemOSRepository();
+  private categoriaRepository = new CategoriaServicoRepository();
   private notificationService = new EmailNotificationService();
 
   // ===========================================================================
@@ -129,6 +131,12 @@ export class OSService {
     ) {
       throw new Error('Nao e possivel alterar desconto em OS finalizada ou cancelada');
     }
+    if (data.categoriaServicoId !== undefined && data.categoriaServicoId !== null) {
+      const categoria = await this.categoriaRepository.findById(data.categoriaServicoId);
+      if (categoria && !categoria.ativo) {
+        throw new Error('Nao e possivel atribuir uma Categoria do Serviço inativa');
+      }
+    }
     const validated = updateOSSchema.parse(data);
     return this.repository.update(id, validated);
   }
@@ -144,6 +152,10 @@ export class OSService {
     if (validated.status === 'CONCLUIDA') {
       if (!os.categoriaServicoId) {
         throw new Error('A OS precisa ter uma Categoria do Serviço atribuída antes de ser concluída');
+      }
+      const categoria = await this.categoriaRepository.findById(os.categoriaServicoId);
+      if (categoria && !categoria.ativo) {
+        throw new Error('A Categoria do Serviço atribuída está inativa. Reative-a antes de concluir a OS');
       }
       const itens = await this.itemRepository.findByOSId(id);
       if (itens.length === 0) {

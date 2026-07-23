@@ -9,6 +9,12 @@ export class UsuarioRepository {
     });
   }
 
+  async findAll() {
+    return prisma.usuario.findMany({
+      orderBy: { nome: 'asc' },
+    });
+  }
+
   async findById(id: number) {
     return prisma.usuario.findUnique({ where: { id } });
   }

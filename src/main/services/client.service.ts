@@ -6,6 +6,7 @@
 import { prisma } from '../database/connection';
 import { ClienteRepository } from '../database/repositories/client.repository';
 import { createClientSchema, updateClientSchema } from '../validators/client.validator';
+import { registrar } from './log.service';
 import type { CreateClienteDTO, UpdateClienteDTO } from '@shared/types/entities.types';
 
 interface CreateClienteComContatosDTO extends CreateClienteDTO {
@@ -78,9 +79,19 @@ export class ClienteService {
   }
 
   async update(id: number, data: UpdateClienteDTO) {
-    await this.getById(id);
+    const atual = await this.getById(id);
     const validated = updateClientSchema.parse(data);
-    return this.repository.update(id, validated);
+    const resultado = await this.repository.update(id, validated);
+    if (validated.ativo !== undefined && validated.ativo !== atual.ativo) {
+      await registrar({
+        nivel: 'INFO',
+        categoria: 'CLIENTE',
+        acao: 'TOGGLE_ATIVO',
+        descricao: `Cliente "${atual.nome}" ${validated.ativo ? 'ativado' : 'desativado'}`,
+        dadosContexto: { entidade: 'CLIENTE', entidadeId: id, ativo: validated.ativo },
+      });
+    }
+    return resultado;
   }
 
   async delete(id: number) {

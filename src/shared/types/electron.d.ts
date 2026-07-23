@@ -17,6 +17,7 @@ export interface ClientAPI {
 
 export interface EquipmentAPI {
   list: () => Promise<unknown>;
+  listAll: () => Promise<unknown>;
   listByClient: (clienteId: number) => Promise<unknown>;
   get: (id: number) => Promise<unknown>;
   getByTag: (etiqueta: string) => Promise<unknown>;
@@ -49,6 +50,7 @@ export interface OSAPI {
 
 export interface UserAPI {
   list: () => Promise<unknown>;
+  listAll: () => Promise<unknown>;
   get: (id: number) => Promise<unknown>;
   create: (data: unknown) => Promise<unknown>;
   update: (id: number, data: unknown) => Promise<unknown>;
@@ -113,6 +115,7 @@ export interface EmailAPI {
 
 export interface ServicoAPI {
   list: () => Promise<unknown>;
+  listAll: () => Promise<unknown>;
   get: (id: number) => Promise<unknown>;
   create: (data: unknown) => Promise<unknown>;
   update: (id: number, data: unknown) => Promise<unknown>;
@@ -121,6 +124,7 @@ export interface ServicoAPI {
 
 export interface CategoriaServicoAPI {
   list: () => Promise<unknown>;
+  listAll: () => Promise<unknown>;
   get: (id: number) => Promise<unknown>;
   create: (data: unknown) => Promise<unknown>;
   update: (id: number, data: unknown) => Promise<unknown>;
@@ -129,6 +133,7 @@ export interface CategoriaServicoAPI {
 
 export interface SubcategoriaServicoAPI {
   list: () => Promise<unknown>;
+  listAll: () => Promise<unknown>;
   get: (id: number) => Promise<unknown>;
   getByCategoria: (categoriaId: number) => Promise<unknown>;
   create: (data: unknown) => Promise<unknown>;
@@ -138,6 +143,7 @@ export interface SubcategoriaServicoAPI {
 
 export interface EquipeAPI {
   list: () => Promise<unknown>;
+  listAll: () => Promise<unknown>;
   get: (id: number) => Promise<unknown>;
   create: (data: unknown) => Promise<unknown>;
   update: (id: number, data: unknown) => Promise<unknown>;
@@ -149,6 +155,7 @@ export interface EquipeAPI {
 
 export interface PecaAPI {
   list: () => Promise<unknown>;
+  listAll: () => Promise<unknown>;
   get: (id: number) => Promise<unknown>;
   create: (data: unknown) => Promise<unknown>;
   update: (id: number, data: unknown) => Promise<unknown>;

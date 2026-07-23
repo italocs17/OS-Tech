@@ -7,6 +7,7 @@ import { Modal } from '../../components/shared/modal';
 import { SearchInput } from '../../components/shared/search-input';
 import { ClientForm } from '../../components/forms/client-form';
 import { ToggleSwitch } from '../../components/shared/toggle-switch';
+import { AtivoBadge, ativoRowClass } from '../../components/shared/ativo-badge';
 import { formatDate, cn } from '../../lib/utils';
 import type { Cliente } from '@shared/types/entities.types';
 
@@ -48,47 +49,19 @@ export function ClientsPage() {
       key: 'nome',
       header: 'Nome',
       render: (item) => (
-        <span className={cn(!(item as ClienteRow).ativo && 'opacity-50 italic')}>
-          {(item as ClienteRow).nome}
-          {!(item as ClienteRow).ativo && <span className="ml-2 text-xs text-muted-foreground">(inativo)</span>}
-        </span>
+        <>
+          {item.nome}
+          <AtivoBadge ativo={item.ativo ?? true} />
+        </>
       ),
     },
-    {
-      key: 'cpfCnpj',
-      header: 'CPF/CNPJ',
-      render: (item) => (
-        <span className={cn(!(item as ClienteRow).ativo && 'opacity-50')}>
-          {(item as ClienteRow).cpfCnpj}
-        </span>
-      ),
-    },
-    {
-      key: 'telefone',
-      header: 'Telefone',
-      render: (item) => (
-        <span className={cn(!(item as ClienteRow).ativo && 'opacity-50')}>
-          {(item as ClienteRow).telefone || '-'}
-        </span>
-      ),
-    },
-    {
-      key: 'email',
-      header: 'E-mail',
-      render: (item) => (
-        <span className={cn(!(item as ClienteRow).ativo && 'opacity-50')}>
-          {(item as ClienteRow).email || '-'}
-        </span>
-      ),
-    },
+    { key: 'cpfCnpj', header: 'CPF/CNPJ' },
+    { key: 'telefone', header: 'Telefone' },
+    { key: 'email', header: 'E-mail' },
     {
       key: 'dataCadastro',
       header: 'Cadastro',
-      render: (item) => (
-        <span className={cn(!(item as ClienteRow).ativo && 'opacity-50')}>
-          {formatDate((item as ClienteRow).dataCadastro)}
-        </span>
-      ),
+      render: (item) => formatDate(item.dataCadastro),
     },
   ];
 
@@ -154,6 +127,7 @@ export function ClientsPage() {
         keyExtractor={(item) => item.id}
         emptyMessage="Nenhum cliente cadastrado"
         onRowClick={handleEdit}
+        rowClassName={(item) => ativoRowClass(item.ativo ?? true)}
       />
 
       {editingClient && (
@@ -466,10 +440,10 @@ function ContatosTab({ clienteId }: { clienteId: number }) {
             </thead>
             <tbody className="divide-y">
               {items.map((c: Contato) => (
-                <tr key={c.id} className={cn('hover:bg-muted/50', !c.ativo && 'opacity-50')}>
+                <tr key={c.id} className={cn('hover:bg-muted/50', ativoRowClass(c.ativo))}>
                   <td className="px-4 py-2 text-sm">
                     {c.nome}
-                    {!c.ativo && <span className="ml-2 text-xs text-muted-foreground">(inativo)</span>}
+                    <AtivoBadge ativo={c.ativo} />
                   </td>
                   <td className="px-4 py-2 text-sm">{c.email}</td>
                   <td className="px-4 py-2 text-sm">{c.telefone || '-'}</td>

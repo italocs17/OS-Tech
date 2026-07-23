@@ -1,5 +1,6 @@
 import { ServicoRepository } from '../database/repositories/servico.repository';
 import { createServicoSchema, updateServicoSchema } from '../validators/servico.validator';
+import { registrar } from './log.service';
 import type { CreateServicoDTO, UpdateServicoDTO } from '@shared/types/entities.types';
 
 export class ServicoService {
@@ -25,9 +26,19 @@ export class ServicoService {
   }
 
   async update(id: number, data: UpdateServicoDTO) {
-    await this.getById(id);
+    const atual = await this.getById(id);
     const validated = updateServicoSchema.parse(data);
-    return this.repository.update(id, validated);
+    const resultado = await this.repository.update(id, validated);
+    if (validated.ativo !== undefined && validated.ativo !== atual.ativo) {
+      await registrar({
+        nivel: 'INFO',
+        categoria: 'SISTEMA',
+        acao: 'TOGGLE_ATIVO',
+        descricao: `Servico "${atual.nome}" ${validated.ativo ? 'ativado' : 'desativado'}`,
+        dadosContexto: { entidade: 'SERVICO', entidadeId: id, ativo: validated.ativo },
+      });
+    }
+    return resultado;
   }
 
   async delete(id: number) {

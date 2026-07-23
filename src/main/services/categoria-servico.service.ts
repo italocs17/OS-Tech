@@ -1,5 +1,6 @@
 import { CategoriaServicoRepository } from '../database/repositories/categoria-servico.repository';
 import { createCategoriaServicoSchema, updateCategoriaServicoSchema } from '../validators/categoria-servico.validator';
+import { registrar } from './log.service';
 import type { CreateCategoriaServicoDTO, UpdateCategoriaServicoDTO } from '@shared/types/entities.types';
 
 export class CategoriaServicoService {
@@ -25,9 +26,19 @@ export class CategoriaServicoService {
   }
 
   async update(id: number, data: UpdateCategoriaServicoDTO) {
-    await this.getById(id);
+    const atual = await this.getById(id);
     const validated = updateCategoriaServicoSchema.parse(data);
-    return this.repository.update(id, validated);
+    const resultado = await this.repository.update(id, validated);
+    if (validated.ativo !== undefined && validated.ativo !== atual.ativo) {
+      await registrar({
+        nivel: 'INFO',
+        categoria: 'SISTEMA',
+        acao: 'TOGGLE_ATIVO',
+        descricao: `Categoria "${atual.nome}" ${validated.ativo ? 'ativada' : 'desativada'}`,
+        dadosContexto: { entidade: 'CATEGORIA_SERVICO', entidadeId: id, ativo: validated.ativo },
+      });
+    }
+    return resultado;
   }
 
   async delete(id: number) {

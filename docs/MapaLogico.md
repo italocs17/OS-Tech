@@ -1,4 +1,4 @@
-# OS.Tech v2.3.4 — Mapa de Lógica e Regras de Negócio
+# OS.Tech v2.3.5 — Mapa de Lógica e Regras de Negócio
 
 ## 1. Arquitetura Geral
 
@@ -118,9 +118,11 @@ PENDENTE ──→ RECEBIDO ──→ ENTREGUE ──→ (terminal)
 | R1 | CPF/CNPJ único, validação algorítmica (módulo 11) |
 | R2 | CNPJ alfanumérico (IN RFB 2.229/2024) |
 | R3 | Contato padrão automático (primeiro contato válido = isPadrao) |
-| R4 | Soft delete (toggle ativo/inativo) — inativos visíveis com esmaecimento, sem edição |
+| R4 | Soft delete (toggle ativo/inativo) — inativos visíveis com esmaecimento (`opacity-50`), nunca ocultos. Ação registrada em auditoria como `TOGGLE_ATIVO` |
 | R5 | CPF/CNPJ imutável na atualização |
 | R6 | Dual listing: list() = ativos (dropdowns), listAll() = todos (gestão) |
+| R7 | Validação de ativo no vínculo: `linkClient()` rejeita contato inativo |
+| R8 | Validação de ativo na conversão: `convertToOS()` rejeita contato inativo vinculado |
 
 ### 4.3 Equipamento
 
@@ -135,9 +137,12 @@ PENDENTE ──→ RECEBIDO ──→ ENTREGUE ──→ (terminal)
 | Regra | Descrição |
 |-------|-----------|
 | R1 | Dual listing: list() = ativos, listAll() = todos |
-| R2 | Soft delete para todas as entidades (toggle inativo) |
+| R2 | Soft delete para todas as entidades (toggle inativo) — inativos visíveis com esmaecimento (`opacity-50`), nunca ocultos |
 | R3 | Subcategoria única por categoria (@@unique) — schema mantido, UI removida |
 | R4 | Serviço vinculado a categoria + subcategoria (cascata) |
+| R5 | Auditoria de toggle: ação `TOGGLE_ATIVO` registrada em `update()` de cada service (servico, categoria-servico, subcategoria-servico, peca) |
+| R6 | Bloqueio de vinculação: OS não pode ser concluída com categoria inativa (`changeStatus()` valida `status: true`) |
+| R7 | Bloqueio de atribuição: OS não pode ter categoria inativa atribuída via `update()` |
 
 ### 4.5 Equipes e Controle de Acesso
 
@@ -147,7 +152,7 @@ PENDENTE ──→ RECEBIDO ──→ ENTREGUE ──→ (terminal)
 | R2 | TECNICO/RECEPCIONISTA: restrito às categorias da sua equipe |
 | R3 | Sidebar dinâmica: itens filtrados por perfil |
 | R4 | Equipe vinculada a categorias (N:N) e usuários (N:N) |
-| R5 | Menu Cadastro: Equipes/Usuários \| Clientes e Contatos/Equipamentos \| Categorias/Serviços/Peças (Contatos integrado ao modal do cliente) |
+| R5 | Menu Cadastro: Equipes/Usuários \| Clientes e Contatos/Equipamentos \| Catálogo (unificado com abas: Serviços, Peças, Categorias — Contatos integrado ao modal do cliente) |
 
 ### 4.6 Autenticação
 
@@ -189,6 +194,7 @@ PENDENTE ──→ RECEBIDO ──→ ENTREGUE ──→ (terminal)
 | R15 | Ação "Revisar": move email REJEITADO → AGUARDANDO_ATENDIMENTO (se tem cliente vinculado) ou NAO_CADASTRADO (se não) |
 | R16 | Validação de ativo no vínculo: `linkClient()` rejeita contato inativo |
 | R17 | Validação de ativo na conversão: `convertToOS()` rejeita contato inativo vinculado |
+| R18 | Service layer: `ClienteContatoService` com regras de negócio (email único por cliente) e auditoria no toggle |
 
 ### 4.9 E-mail (Notificações SMTP)
 
@@ -314,14 +320,19 @@ PENDENTE ──→ RECEBIDO ──→ ENTREGUE ──→ (terminal)
 | Padrão | Detalhe |
 |--------|---------|
 | Validação dupla | Zod no main process + validação manual no frontend |
-| Soft delete | Cliente, Equipamento, Serviço, Peca, Categoria, Subcategoria, Equipe, Usuario, ClienteContato |
+| Soft delete | Cliente, Equipamento, Serviço, Peca, Categoria, Subcategoria, Equipe, Usuario, ClienteContato — inativos esmaecidos (`opacity-50`), nunca ocultos |
 | Hard delete | OS, ItemOS, Inventario, EventoOS (imutável) |
-| Dual listing | list() = ativos (dropdowns), listAll() = todos (gestão) — Cliente, Contato, catálogo |
+| Dual listing | list() = ativos (dropdowns), listAll() = todos (gestão) — Cliente, Contato, catálogo (7 entidades com IPC `listAll` separado) |
 | z.preprocess | Converte "" → undefined para compatibilidade com formulários HTML |
 | Fire-and-forget | Notificações por email nunca bloqueiam o fluxo principal |
 | invalidateAllOS() | Após cada mutation na OS, invalida as 7 queries relacionadas atomicamente |
 | CurrencyInput | Dígitos = centavos (ex: 5 → R$ 0,05) |
 | Timestamp automático | Eventos e logs usam @default(now()) do Prisma |
+| AtivoBadge | Componente visual que exibe "Ativo" (verde) ou "Inativo" (vermelho) em todas as telas de gestão |
+| ativoRowClass() | Função helper que aplica `opacity-50 bg-gray-50` em linhas de itens inativos no DataTable |
+| rowClassName (DataTable) | Prop que permite estilização por linha — usado para aplicar efeito visual em itens inativos |
+| Auditoria toggle | Ação `TOGGLE_ATIVO` registrada em `update()` de 9 services ao inativar/ativar qualquer entidade |
+| Validação de ativo (OS) | `changeStatus()` bloqueia conclusão com categoria inativa; `update()` bloqueia atribuição de categoria inativa |
 
 ---
 
@@ -334,7 +345,7 @@ PENDENTE ──→ RECEBIDO ──→ ENTREGUE ──→ (terminal)
 | 3 | OS list sem filtro server-side: lista completa enviada ao cliente |
 | 4 | Controles financeiros são UI-only: desconto/pagamento desabilitados no frontend mas a API aceita via preload |
 | 5 | Sem confirmação em ações destrutivas: cancelar OS, transições logísticas, remoção de itens — tudo sem confirmação |
-| 6 | Email IPC mistura 4 services/repositories: contatos CRUD chama repository diretamente |
+| 6 | ~~Email IPC mistura 4 services/repositories: contatos CRUD chama repository diretamente~~ — Resolvido em v2.3.5 via `ClienteContatoService` |
 | 7 | Canal IPC inconsistente: inventario:delete (PT) vs inventory:* (EN) |
 | 8 | Sem paginação no banco: todas as queries retornam todos os registros |
 | 9 | hasAccessToCategoria importado mas não utilizado na OS List |
@@ -344,3 +355,5 @@ PENDENTE ──→ RECEBIDO ──→ ENTREGUE ──→ (terminal)
 | 13 | Clientes: modal tabulado (Dados + Contatos) substituiu páginas separadas — ContactsPage removida |
 | 14 | Sidebar: "Contatos" removido como item independente — gerenciamento integrado ao modal do cliente |
 | 15 | Dual listing: list() retorna apenas ativos (dropdowns), listAll() retorna todos (gestão) — inativos esmaecidos na UI |
+| 16 | Sidebar simplificada (v2.3.5): 3 itens (Categorias/Serviços/Peças) unificados em "Catálogo" com 3 abas |
+| 17 | Auditoria de toggle (v2.3.5): ação `TOGGLE_ATIVO` registrada em update() de 9 services — dados incluem `ação` e `novoValor` |

@@ -9,6 +9,10 @@ export function registerPecaIpcHandlers() {
     return pecaService.list();
   });
 
+  ipcMain.handle(IPC_CHANNELS.PECA.LIST_ALL, async () => {
+    return pecaService.listAll();
+  });
+
   ipcMain.handle(IPC_CHANNELS.PECA.GET, async (_, id: number) => {
     return pecaService.getById(id);
   });

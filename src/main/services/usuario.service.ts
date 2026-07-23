@@ -16,6 +16,10 @@ export class UsuarioService {
     return this.repository.findMany();
   }
 
+  async listAll() {
+    return this.repository.findAll();
+  }
+
   async getById(id: number) {
     const usuario = await this.repository.findById(id);
     if (!usuario) throw new Error('Usuario nao encontrado');
@@ -37,7 +41,7 @@ export class UsuarioService {
   }
 
   async update(id: number, data: UpdateUsuarioDTO) {
-    await this.getById(id);
+    const atual = await this.getById(id);
     const validated = updateUsuarioSchema.parse(data);
 
     const updateData: Record<string, unknown> = {};
@@ -46,7 +50,17 @@ export class UsuarioService {
     if (validated.ativo !== undefined) updateData.ativo = validated.ativo;
     if (validated.senha) updateData.senhaHash = hashPassword(validated.senha);
 
-    return this.repository.update(id, updateData);
+    const resultado = await this.repository.update(id, updateData);
+    if (validated.ativo !== undefined && validated.ativo !== atual.ativo) {
+      await registrar({
+        nivel: 'INFO',
+        categoria: 'SISTEMA',
+        acao: 'TOGGLE_ATIVO',
+        descricao: `Usuario "${atual.nome}" ${validated.ativo ? 'ativado' : 'desativado'}`,
+        dadosContexto: { entidade: 'USUARIO', entidadeId: id, ativo: validated.ativo },
+      });
+    }
+    return resultado;
   }
 
   async delete(id: number) {

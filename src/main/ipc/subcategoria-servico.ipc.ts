@@ -9,6 +9,10 @@ export function registerSubcategoriaServicoIpcHandlers() {
     return subcategoriaServicoService.list();
   });
 
+  ipcMain.handle(IPC_CHANNELS.SUBCATEGORIA_SERVICO.LIST_ALL, async () => {
+    return subcategoriaServicoService.listAll();
+  });
+
   ipcMain.handle(IPC_CHANNELS.SUBCATEGORIA_SERVICO.GET, async (_, id: number) => {
     return subcategoriaServicoService.getById(id);
   });

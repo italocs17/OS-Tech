@@ -3,6 +3,7 @@ import { IPC_CHANNELS } from '@shared/constants/ipc-channels';
 
 export const equipeAPI = {
   list: () => ipcRenderer.invoke(IPC_CHANNELS.EQUIPE.LIST),
+  listAll: () => ipcRenderer.invoke(IPC_CHANNELS.EQUIPE.LIST_ALL),
   get: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.EQUIPE.GET, id),
   create: (data: unknown) => ipcRenderer.invoke(IPC_CHANNELS.EQUIPE.CREATE, data),
   update: (id: number, data: unknown) =>

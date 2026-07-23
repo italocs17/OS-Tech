@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../../components/layout/page-header';
 import { DataTable, type Column } from '../../components/shared/data-table';
@@ -7,6 +7,7 @@ import { Modal } from '../../components/shared/modal';
 import { FormField } from '../../components/shared/form-field';
 import { SearchInput } from '../../components/shared/search-input';
 import { ToggleSwitch } from '../../components/shared/toggle-switch';
+import { AtivoBadge, ativoRowClass } from '../../components/shared/ativo-badge';
 import type { Usuario, PerfilUsuario, Equipe } from '@shared/types/entities.types';
 
 const PERFIS: PerfilUsuario[] = ['TECNICO', 'RECEPCIONISTA', 'PROPRIETARIO', 'GESTOR'];
@@ -27,7 +28,7 @@ export function UsersPage() {
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['users'],
-    queryFn: () => window.osTech.user.list(),
+    queryFn: () => window.osTech.user.listAll(),
   });
 
   const toggleAtivoMutation = useMutation({
@@ -36,18 +37,18 @@ export function UsersPage() {
   });
 
   const columns: Column<UsuarioRow>[] = [
-    { key: 'nome', header: 'Nome' },
-    { key: 'login', header: 'Login' },
-    { key: 'perfil', header: 'Perfil' },
     {
-      key: 'ativo',
-      header: 'Status',
+      key: 'nome',
+      header: 'Nome',
       render: (item) => (
-        <span className={item.ativo ? 'text-green-600' : 'text-destructive'}>
-          {item.ativo ? 'Ativo' : 'Inativo'}
-        </span>
+        <>
+          {item.nome}
+          <AtivoBadge ativo={item.ativo} />
+        </>
       ),
     },
+    { key: 'login', header: 'Login' },
+    { key: 'perfil', header: 'Perfil' },
     {
       key: 'acoes',
       header: '',
@@ -114,9 +115,11 @@ export function UsersPage() {
         keyExtractor={(item) => item.id}
         emptyMessage="Nenhum usuario cadastrado"
         onRowClick={handleEdit}
+        rowClassName={(item) => ativoRowClass(item.ativo)}
       />
 
       <UserFormModal
+        key={editingUser?.id ?? 'new'}
         open={modalOpen}
         user={editingUser}
         onClose={() => { setModalOpen(false); setEditingUser(null); }}
@@ -150,7 +153,7 @@ function UserFormModal({
 
   const { data: equipesData } = useQuery({
     queryKey: ['equipes'],
-    queryFn: () => window.osTech.equipe.list(),
+    queryFn: () => window.osTech.equipe.listAll(),
     enabled: open,
   });
 
@@ -172,11 +175,11 @@ function UserFormModal({
 
   const [selectedEquipes, setSelectedEquipes] = useState<number[]>([]);
 
-  useState(() => {
+  useEffect(() => {
     if (isEditing && equipesUsuarioIds.length > 0) {
       setSelectedEquipes(equipesUsuarioIds);
     }
-  });
+  }, [isEditing, equipesUsuarioIds]);
 
   const mutation = useMutation({
     mutationFn: async () => {

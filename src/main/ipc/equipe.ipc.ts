@@ -9,6 +9,10 @@ export function registerEquipeIpcHandlers() {
     return equipeService.list();
   });
 
+  ipcMain.handle(IPC_CHANNELS.EQUIPE.LIST_ALL, async () => {
+    return equipeService.listAll();
+  });
+
   ipcMain.handle(IPC_CHANNELS.EQUIPE.GET, async (_, id: number) => {
     return equipeService.getById(id);
   });

@@ -14,6 +14,10 @@ export function registerEquipmentIpcHandlers() {
     return equipmentService.list();
   });
 
+  ipcMain.handle(IPC_CHANNELS.EQUIPMENT.LIST_ALL, async () => {
+    return equipmentService.listAll();
+  });
+
   ipcMain.handle(IPC_CHANNELS.EQUIPMENT.LIST_BY_CLIENT, async (_, clienteId: number) => {
     return equipmentService.listByCliente(clienteId);
   });

@@ -7,6 +7,7 @@ import { Modal } from '../../components/shared/modal';
 import { FormField } from '../../components/shared/form-field';
 import { SearchInput } from '../../components/shared/search-input';
 import { ToggleSwitch } from '../../components/shared/toggle-switch';
+import { AtivoBadge, ativoRowClass } from '../../components/shared/ativo-badge';
 import type {
   Equipe, CategoriaServico, Usuario,
   CreateEquipeDTO, UpdateEquipeDTO,
@@ -31,12 +32,12 @@ export function TeamsPage() {
 
   const { data: equipes, isLoading } = useQuery({
     queryKey: ['equipes'],
-    queryFn: () => window.osTech.equipe.list(),
+    queryFn: () => window.osTech.equipe.listAll(),
   });
 
   const { data: usuarios } = useQuery({
     queryKey: ['users'],
-    queryFn: () => window.osTech.user.list(),
+    queryFn: () => window.osTech.user.listAll(),
   });
 
   const equipesData = Array.isArray(equipes) ? (equipes as EquipeRow[]) : [];
@@ -48,7 +49,16 @@ export function TeamsPage() {
   });
 
   const columns: Column<EquipeRow>[] = [
-    { key: 'nome', header: 'Nome' },
+    {
+      key: 'nome',
+      header: 'Nome',
+      render: (item) => (
+        <>
+          {item.nome}
+          <AtivoBadge ativo={item.ativo} />
+        </>
+      ),
+    },
     { key: 'descricao', header: 'Descricao' },
     {
       key: 'categorias',
@@ -137,6 +147,7 @@ export function TeamsPage() {
         onRowClick={handleEdit}
         onRowSecondaryAction={handleGerenciarUsuarios}
         secondaryActionLabel="Membros"
+        rowClassName={(item) => ativoRowClass(item.ativo)}
       />
 
       <EquipeFormModal

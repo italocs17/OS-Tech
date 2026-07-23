@@ -14,6 +14,10 @@ export function registerUsuarioIpcHandlers() {
     return usuarioService.list();
   });
 
+  ipcMain.handle(IPC_CHANNELS.USER.LIST_ALL, async () => {
+    return usuarioService.listAll();
+  });
+
   ipcMain.handle(IPC_CHANNELS.USER.GET, async (_, id: number) => {
     return usuarioService.getById(id);
   });

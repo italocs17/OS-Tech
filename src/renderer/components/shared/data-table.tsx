@@ -21,6 +21,7 @@ interface DataTableProps<T> {
   onRowClick?: (item: T) => void;
   onRowSecondaryAction?: (item: T) => void;
   secondaryActionLabel?: string;
+  rowClassName?: (item: T) => string;
 }
 
 export function DataTable<T>({
@@ -32,6 +33,7 @@ export function DataTable<T>({
   onRowClick,
   onRowSecondaryAction,
   secondaryActionLabel,
+  rowClassName,
 }: DataTableProps<T>) {
   if (isLoading) {
     return (
@@ -70,7 +72,7 @@ export function DataTable<T>({
             <tr
               key={keyExtractor(item)}
               onClick={() => onRowClick?.(item)}
-              className={cn('hover:bg-muted/50', onRowClick && 'cursor-pointer')}
+              className={cn('hover:bg-muted/50', onRowClick && 'cursor-pointer', rowClassName?.(item))}
             >
               {columns.map((col) => (
                 <td

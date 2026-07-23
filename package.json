@@ -1,6 +1,6 @@
 {
   "name": "os.tech",
-  "version": "2.3.4",
+  "version": "2.3.5",
   "description": "Sistema de Gestão para Assistência Técnica de Computadores",
   "main": "dist/main/index.js",
   "scripts": {

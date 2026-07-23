@@ -2,7 +2,7 @@
 
 Sistema desktop (Electron) 100% offline para gestão de assistência técnica de computadores: cadastro de clientes, equipamentos, ordens de serviço com máquina de status, inventário de hardware (manual), geração de PDFs, backup/restore e logs de auditoria.
 
-**Versão atual:** 2.3.4
+**Versão atual:** 2.3.5
 
 ---
 
@@ -195,7 +195,7 @@ email:            list, get, checkMail, linkClient, convertToOS, reject,
   - Formulário de OS mostra apenas categorias da equipe
   - Controles de desconto e pagamento restritos no detalhe da OS
 - Página de gestão de equipes com CRUD + vinculo de categorias e membros
-- Menu "Cadastro" reorganizado com separadores: Equipes/Usuários | Clientes/Contatos/Equipamentos | Categorias/Serviços/Peças
+- Menu "Cadastro" reorganizado com separadores: Equipes/Usuários | Clientes/Contatos/Equipamentos | Catálogo
 
 ### Clientes (CRUD)
 - Nome + CPF/CNPJ (obrigatórios, único), soft delete
@@ -297,8 +297,8 @@ Rodapé em todas as páginas: "OS.Tech - Sistema de Gestão para Assistência T�
 - **Ordenação cronológica**: eventos ordenados do mais recente ao mais antigo na UI; relatórios mantêm ordem ASC
 - **CPF/CNPJ alfanumérico**: validação com ASCII-48 + módulo 11, aceita letras em CNPJ
 - **Controle de acesso por equipe**: PROPRIETARIO/GESTOR têm acesso total; TECNICO/RECEPCIONISTA restrito às categorias da sua equipe via `hasAccessToCategoria()` no auth-context
-- **Sidebar dinâmica**: itens de menu filtrados por `perfis` do usuário logado; "Categorias" abaixo de "Clientes" naviga para `/catalog?tab=categorias`
-- **Sidebar com separadores**: Menu Cadastro dividido em 3 grupos com separadores visuais (Equipes/Usuários | Clientes/Contatos/Equipamentos | Categorias/Serviços/Peças)
+- **Sidebar dinâmica**: itens de menu filtrados por `perfis` do usuário logado; "Catálogo" (`📦`) é item único do catálogo, navega para `/catalog`
+- **Sidebar com separadores**: Menu Cadastro dividido em 3 grupos com separadores visuais (Equipes/Usuários | Clientes/Contatos/Equipamentos | Catálogo)
 - **Status simplificado (v2.3.2)**: 5 status técnicos + 3 logísticos (independentes), substituindo 8 uniaxiais
 - **Soft delete universal (v2.3.2)**: Toggle ativo/inativo em todas as entidades do catálogo (substitui botão Excluir)
 - **Ações via dropdown (v2.3.2)**: componentes de ação na OS Detail usam `ActionDropdown` inline (sem modais)
@@ -367,7 +367,42 @@ npx prisma migrate dev --name <nome>
 
 ## Histórico de Versões
 
-### ✅ v2.3.4 (Atual)
+### ✅ v2.3.5 (Atual)
+
+**Padronização visual de toggle ativo/inativo:**
+- Regra: inativos **sempre visíveis**, esmaecidos (`opacity-50`), nunca invisíveis
+- Novo componente `AtivoBadge` (verde INATIVO, vermelho ATIVO) em todas as telas
+- Novo componente `ativoRowClass()` — aplica `opacity-50 bg-gray-50` em linhas de itens inativos
+- `DataTable` suporta prop `rowClassName` para estilização por linha
+- Implementado em: Usuários, Equipes, Catálogo (3 abas), Clientes, Contatos
+
+**Dual listing padronizado (`listAll()`):**
+- Novos canais IPC `*.{entity}:listAll` para 7 entidades: equipment, user, servico, categoria-servico, subcategoria-servico, equipe, peca
+- `findAll()` adicionado a `EquipmentRepository` e `UsuarioRepository`
+- `listAll()` adicionado a `EquipmentService` e `UsuarioService`
+- Todas as páginas de gestão usam `listAll()` em vez de `list()`
+
+**Auditoria no toggle ativo/inativo:**
+- Ação `TOGGLE_ATIVO` registrada em `registrar()` no `update()` de 9 services: cliente, equipment, usuario, equipe, servico, categoria-servico, subcategoria-servico, peca, cliente-contato
+- Dados incluem: `entidade`, `entidadeId`, `ação`, `novoValor`
+
+**Validação de vinculação com itens inativos:**
+- `changeStatus()`: bloqueia conclusão de OS com categoria inativa (`status: false`)
+- `update()`: bloqueia atribuição de categoria inativa em OS existente
+
+**Service layer para ClienteContato:**
+- Novo `ClienteContatoService` (regra: email único por cliente)
+- `email.ipc.ts` atualizado para usar service em vez de repository diretamente
+- Auditoria de toggle em contato
+
+**Correções de bugs:**
+- Modal de edição de usuários: campos não preenchidos ao editar — fix com `key={editingUser?.id ?? 'new'}` para forçar remontagem + `useEffect` para inicializar equipes
+- Catálogo: dados do formulário persistiam entre abas — fix com `key={`${tab}-${editingItem?.id ?? 'new'}`}` no `CatalogFormModal`
+
+**Sidebar simplificada:**
+- 3 itens separados (Categorias/Serviços/Peças) substituídos por um único item **"Catálogo"** (`📦`) navegando para `/catalog`
+
+### v2.3.4
 
 **Botão "Revisar" para chamados rejeitados:**
 - Chamados com status REJEITADO podem ser revisados via botão "Revisar"
@@ -430,6 +465,7 @@ npx prisma migrate dev --name <nome>
 - Toggle ativo/inativo para: Cliente, Contato, Equipamento, Serviço, Categoria, Subcategoria, Peça, Equipe, Usuário
 - Componente `ToggleSwitch` reutilizável
 - Botão "Excluir" removido de todas as telas do catálogo
+- Inativos **sempre visíveis**, esmaecidos (`opacity-50`), nunca ocultos
 - Itens inativos nunca aparecem em dropdowns de seleção
 
 **Ações via Dropdown:**

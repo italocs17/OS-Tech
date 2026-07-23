@@ -15,6 +15,13 @@ export class EquipamentoRepository {
     });
   }
 
+  async findAll() {
+    return prisma.equipamento.findMany({
+      include: { cliente: true },
+      orderBy: { dataCadastro: 'desc' },
+    });
+  }
+
   async findById(id: number) {
     return prisma.equipamento.findUnique({
       where: { id },

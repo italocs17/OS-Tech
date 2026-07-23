@@ -1,5 +1,6 @@
 import { EquipeRepository } from '../database/repositories/equipe.repository';
 import { createEquipeSchema, updateEquipeSchema } from '../validators/equipe.validator';
+import { registrar } from './log.service';
 import type { CreateEquipeDTO, UpdateEquipeDTO } from '@shared/types/entities.types';
 
 export class EquipeService {
@@ -25,9 +26,19 @@ export class EquipeService {
   }
 
   async update(id: number, data: UpdateEquipeDTO) {
-    await this.getById(id);
+    const atual = await this.getById(id);
     const validated = updateEquipeSchema.parse(data);
-    return this.repository.update(id, validated);
+    const resultado = await this.repository.update(id, validated);
+    if (validated.ativo !== undefined && validated.ativo !== atual.ativo) {
+      await registrar({
+        nivel: 'INFO',
+        categoria: 'SISTEMA',
+        acao: 'TOGGLE_ATIVO',
+        descricao: `Equipe "${atual.nome}" ${validated.ativo ? 'ativada' : 'desativada'}`,
+        dadosContexto: { entidade: 'EQUIPE', entidadeId: id, ativo: validated.ativo },
+      });
+    }
+    return resultado;
   }
 
   async delete(id: number) {

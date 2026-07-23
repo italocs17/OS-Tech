@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Modal } from '../../../components/shared/modal';
 import { ToggleSwitch } from '../../../components/shared/toggle-switch';
+import { AtivoBadge, ativoRowClass } from '../../../components/shared/ativo-badge';
 
 interface Contato {
   id: number;
@@ -28,7 +29,7 @@ export function ContactsModal({ clienteId, clienteNome, open, onClose }: Contact
 
   const { data: contatos, isLoading } = useQuery({
     queryKey: ['cliente-contatos', clienteId],
-    queryFn: () => window.osTech.email.listContatos(clienteId) as Promise<Contato[]>,
+    queryFn: () => window.osTech.email.listAllContatos(clienteId) as Promise<Contato[]>,
     enabled: open,
   });
 
@@ -141,14 +142,18 @@ export function ContactsModal({ clienteId, clienteNome, open, onClose }: Contact
                   </thead>
                   <tbody className="divide-y">
                     {items.map((c: Contato) => (
-                      <tr key={c.id} className="hover:bg-muted/50">
-                        <td className="px-4 py-2 text-sm">{c.nome}</td>
+                      <tr key={c.id} className={`hover:bg-muted/50 ${ativoRowClass(c.ativo)}`}>
+                        <td className="px-4 py-2 text-sm">
+                          {c.nome}
+                          <AtivoBadge ativo={c.ativo} />
+                        </td>
                         <td className="px-4 py-2 text-sm">{c.email}</td>
                         <td className="px-4 py-2 text-sm">{c.telefone || '-'}</td>
                         <td className="px-4 py-2 text-right">
                           <button
                             onClick={() => handleEdit(c)}
-                            className="mr-2 text-xs text-blue-600 hover:underline"
+                            disabled={!c.ativo}
+                            className="mr-2 text-xs text-blue-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             Editar
                           </button>

@@ -9,6 +9,7 @@ import { FormField } from '../../components/shared/form-field';
 import { SearchInput } from '../../components/shared/search-input';
 import { ToggleSwitch } from '../../components/shared/toggle-switch';
 import { CurrencyInput } from '../../components/shared/currency-input';
+import { AtivoBadge, ativoRowClass } from '../../components/shared/ativo-badge';
 import { formatCurrency } from '../../lib/utils';
 import type {
   Servico, Peca, CategoriaServico,
@@ -59,17 +60,17 @@ export function CatalogPage() {
 
   const { data: servicos, isLoading: servicosLoading } = useQuery({
     queryKey: ['servicos'],
-    queryFn: () => window.osTech.servico.list(),
+    queryFn: () => window.osTech.servico.listAll(),
   });
 
   const { data: pecas, isLoading: pecasLoading } = useQuery({
     queryKey: ['pecas'],
-    queryFn: () => window.osTech.peca.list(),
+    queryFn: () => window.osTech.peca.listAll(),
   });
 
   const { data: categorias, isLoading: categoriasLoading } = useQuery({
     queryKey: ['categorias-servico'],
-    queryFn: () => window.osTech.categoriaServico.list(),
+    queryFn: () => window.osTech.categoriaServico.listAll(),
   });
 
   const servicosData = Array.isArray(servicos) ? servicos : [];
@@ -90,7 +91,16 @@ export function CatalogPage() {
   });
 
   const servicoColumns: Column<ServicoRow>[] = [
-    { key: 'descricao', header: 'Descricao' },
+    {
+      key: 'descricao',
+      header: 'Descrição',
+      render: (item) => (
+        <>
+          {item.descricao}
+          <AtivoBadge ativo={item.ativo} />
+        </>
+      ),
+    },
     {
       key: 'categoria',
       header: 'Categoria',
@@ -98,7 +108,7 @@ export function CatalogPage() {
     },
     {
       key: 'valorPadrao',
-      header: 'Valor Padrao',
+      header: 'Valor Padrão',
       render: (item) => formatCurrency(item.valorPadrao),
     },
     {
@@ -108,18 +118,27 @@ export function CatalogPage() {
         <ToggleSwitch
           checked={item.ativo}
           onChange={(ativo) => toggleAtivoMutation.mutate({ type: 'servico', id: item.id, ativo })}
-          label={item.ativo ? 'Desativar servico' : 'Ativar servico'}
+          label={item.ativo ? 'Desativar serviço' : 'Ativar serviço'}
         />
       ),
     },
   ];
 
   const pecaColumns: Column<PecaRow>[] = [
-    { key: 'descricao', header: 'Descricao' },
+    {
+      key: 'descricao',
+      header: 'Descrição',
+      render: (item) => (
+        <>
+          {item.descricao}
+          <AtivoBadge ativo={item.ativo} />
+        </>
+      ),
+    },
     { key: 'fabricante', header: 'Fabricante' },
     {
       key: 'valorReferencia',
-      header: 'Valor Referencia',
+      header: 'Valor Referência',
       render: (item) => formatCurrency(item.valorReferencia),
     },
     {
@@ -129,15 +148,24 @@ export function CatalogPage() {
         <ToggleSwitch
           checked={item.ativo}
           onChange={(ativo) => toggleAtivoMutation.mutate({ type: 'peca', id: item.id, ativo })}
-          label={item.ativo ? 'Desativar peca' : 'Ativar peca'}
+          label={item.ativo ? 'Desativar peça' : 'Ativar peça'}
         />
       ),
     },
   ];
 
   const categoriaColumns: Column<CategoriaServicoRow>[] = [
-    { key: 'nome', header: 'Nome' },
-    { key: 'descricao', header: 'Descricao' },
+    {
+      key: 'nome',
+      header: 'Nome',
+      render: (item) => (
+        <>
+          {item.nome}
+          <AtivoBadge ativo={item.ativo} />
+        </>
+      ),
+    },
+    { key: 'descricao', header: 'Descrição' },
     {
       key: 'acoes',
       header: '',
@@ -219,7 +247,7 @@ export function CatalogPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Catalogo"
+        title="Catálogo"
         description={`${currentData.length} de ${totalData.length} registros`}
         actions={
           <button
@@ -242,14 +270,14 @@ export function CatalogPage() {
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            {t === 'servicos' ? 'Servicos' : t === 'pecas' ? 'Pecas' : 'Categorias'}
+            {t === 'servicos' ? 'Serviços' : t === 'pecas' ? 'Peças' : 'Categorias'}
           </button>
         ))}
       </div>
 
       <div className="flex gap-4">
         <SearchInput
-          placeholder={`Buscar ${tab === 'servicos' ? 'servico' : tab === 'pecas' ? 'peca' : 'categoria'}...`}
+          placeholder={`Buscar ${tab === 'servicos' ? 'serviço' : tab === 'pecas' ? 'peça' : 'categoria'}...`}
           value={searchQuery}
           onChange={setSearchQuery}
           className="max-w-sm"
@@ -278,16 +306,18 @@ export function CatalogPage() {
           columns={servicoColumns as any}
           data={filteredServicos}
           keyExtractor={(item: ServicoRow) => item.id}
-          emptyMessage="Nenhum servico cadastrado"
+          emptyMessage="Nenhum serviço cadastrado"
           onRowClick={handleEditServico}
+          rowClassName={(item: ServicoRow) => ativoRowClass(item.ativo)}
         />
       ) : tab === 'pecas' ? (
         <DataTable
           columns={pecaColumns as any}
           data={filteredPecas}
           keyExtractor={(item: PecaRow) => item.id}
-          emptyMessage="Nenhuma peca cadastrada"
+          emptyMessage="Nenhuma peça cadastrada"
           onRowClick={handleEditPeca}
+          rowClassName={(item: PecaRow) => ativoRowClass(item.ativo)}
         />
       ) : (
         <DataTable
@@ -296,10 +326,12 @@ export function CatalogPage() {
           keyExtractor={(item: CategoriaServicoRow) => item.id}
           emptyMessage="Nenhuma categoria cadastrada"
           onRowClick={handleEditCategoria}
+          rowClassName={(item: CategoriaServicoRow) => ativoRowClass(item.ativo)}
         />
       )}
 
       <CatalogFormModal
+        key={`${tab}-${editingItem?.id ?? 'new'}`}
         tab={tab}
         open={modalOpen}
         editingItem={editingItem}
@@ -386,9 +418,9 @@ function CatalogFormModal({
     setErrors({});
     const newErrors: Record<string, string> = {};
     if (isCategoria) {
-      if (!form.nome.trim()) newErrors.nome = 'Nome e obrigatorio';
+      if (!form.nome.trim()) newErrors.nome = 'Nome é obrigatório';
     } else {
-      if (!form.descricao.trim()) newErrors.descricao = 'Descricao e obrigatoria';
+      if (!form.descricao.trim()) newErrors.descricao = 'Descrição é obrigatória';
     }
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
     mutation.mutate();
@@ -398,8 +430,8 @@ function CatalogFormModal({
     setForm((prev: any) => ({ ...prev, [field]: value }));
 
   const title = isEditing
-    ? `Editar ${isCategoria ? 'Categoria' : isServico ? 'Servico' : 'Peca'}`
-    : `Nov${isCategoria ? 'a' : isServico ? 'o' : 'a'} ${isCategoria ? 'Categoria' : isServico ? 'Servico' : 'Peca'}`;
+    ? `Editar ${isCategoria ? 'Categoria' : isServico ? 'Serviço' : 'Peça'}`
+    : `Nov${isCategoria ? 'a' : isServico ? 'o' : 'a'} ${isCategoria ? 'Categoria' : isServico ? 'Serviço' : 'Peça'}`;
 
   return (
     <Modal open={open} title={title} onClose={onClose} size="md">
@@ -410,7 +442,7 @@ function CatalogFormModal({
               <input type="text" value={form.nome} onChange={(e) => set('nome', e.target.value)}
                 className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" placeholder="Ex: Bancada, Rede, CFTV" />
             </FormField>
-            <FormField label="Descricao">
+            <FormField label="Descrição">
               <input type="text" value={form.descricao} onChange={(e) => set('descricao', e.target.value)}
                 className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
             </FormField>
@@ -418,7 +450,7 @@ function CatalogFormModal({
         )}
         {(isServico || !isCategoria) && (
           <>
-            <FormField label="Descricao" required error={errors.descricao}>
+            <FormField label="Descrição" required error={errors.descricao}>
               <input type="text" value={form.descricao} onChange={(e) => set('descricao', e.target.value)}
                 className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
             </FormField>
@@ -433,7 +465,7 @@ function CatalogFormModal({
                     ))}
                   </select>
                 </FormField>
-                <FormField label="Valor Padrao">
+                <FormField label="Valor Padrão">
                   <CurrencyInput value={form.valorPadrao} onChange={(val) => set('valorPadrao', val)} />
                 </FormField>
               </>
@@ -444,7 +476,7 @@ function CatalogFormModal({
                   <input type="text" value={form.fabricante} onChange={(e) => set('fabricante', e.target.value)}
                     className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 </FormField>
-                <FormField label="Valor Referencia">
+                <FormField label="Valor Referência">
                   <CurrencyInput value={form.valorReferencia} onChange={(val) => set('valorReferencia', val)} />
                 </FormField>
               </>

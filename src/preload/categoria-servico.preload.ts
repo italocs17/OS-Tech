@@ -3,6 +3,7 @@ import { IPC_CHANNELS } from '@shared/constants/ipc-channels';
 
 export const categoriaServicoAPI = {
   list: () => ipcRenderer.invoke(IPC_CHANNELS.CATEGORIA_SERVICO.LIST),
+  listAll: () => ipcRenderer.invoke(IPC_CHANNELS.CATEGORIA_SERVICO.LIST_ALL),
   get: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.CATEGORIA_SERVICO.GET, id),
   create: (data: unknown) => ipcRenderer.invoke(IPC_CHANNELS.CATEGORIA_SERVICO.CREATE, data),
   update: (id: number, data: unknown) =>

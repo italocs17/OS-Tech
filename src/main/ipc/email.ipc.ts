@@ -3,12 +3,12 @@ import { IPC_CHANNELS } from '@shared/constants/ipc-channels';
 import { EmailSolicitacaoService } from '../services/email-solicitacao.service';
 import { EmailConfigService } from '../services/email-config.service';
 import { EmailService } from '../services/email.service';
-import { ClienteContatoRepository } from '../database/repositories/cliente-contato.repository';
+import { ClienteContatoService } from '../services/cliente-contato.service';
 
 const solicitacaoService = new EmailSolicitacaoService();
 const configService = new EmailConfigService();
 const emailService = new EmailService();
-const contatoRepository = new ClienteContatoRepository();
+const contatoService = new ClienteContatoService();
 
 export function registerEmailIpcHandlers() {
   ipcMain.handle(IPC_CHANNELS.EMAIL.LIST, async () => {
@@ -61,23 +61,23 @@ export function registerEmailIpcHandlers() {
   });
 
   ipcMain.handle(IPC_CHANNELS.EMAIL.LIST_CONTATOS, async (_, clienteId: number) => {
-    return contatoRepository.findMany(clienteId);
+    return contatoService.listByCliente(clienteId);
   });
 
   ipcMain.handle(IPC_CHANNELS.EMAIL.LIST_ALL_CONTATOS, async (_, clienteId: number) => {
-    return contatoRepository.findAll(clienteId);
+    return contatoService.listAllByCliente(clienteId);
   });
 
   ipcMain.handle(IPC_CHANNELS.EMAIL.CREATE_CONTATO, async (_, data) => {
-    return contatoRepository.create(data);
+    return contatoService.create(data);
   });
 
   ipcMain.handle(IPC_CHANNELS.EMAIL.UPDATE_CONTATO, async (_, id: number, data) => {
-    return contatoRepository.update(id, data);
+    return contatoService.update(id, data);
   });
 
   ipcMain.handle(IPC_CHANNELS.EMAIL.DELETE_CONTATO, async (_, id: number) => {
-    return contatoRepository.delete(id);
+    return contatoService.delete(id);
   });
 
   ipcMain.handle(IPC_CHANNELS.EMAIL.LIST_ATTACHMENTS, async (_, emailSolicitacaoId: number) => {
