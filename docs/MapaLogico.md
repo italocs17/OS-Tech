@@ -1,4 +1,4 @@
-# OS.Tech v2.3.5 — Mapa de Lógica e Regras de Negócio
+# OS.Tech v2.4.0 — Mapa de Lógica e Regras de Negócio
 
 ## 1. Arquitetura Geral
 
@@ -144,7 +144,32 @@ PENDENTE ──→ RECEBIDO ──→ ENTREGUE ──→ (terminal)
 | R6 | Bloqueio de vinculação: OS não pode ser concluída com categoria inativa (`changeStatus()` valida `status: true`) |
 | R7 | Bloqueio de atribuição: OS não pode ter categoria inativa atribuída via `update()` |
 
-### 4.5 Equipes e Controle de Acesso
+### 4.5 Contratos
+
+| Regra | Descrição |
+|-------|-----------|
+| R1 | Contrato vinculado a cliente (FK obrigatória) |
+| R2 | Número do contrato obrigatório |
+| R3 | Data de início deve ser anterior à data de fim |
+| R4 | Soft delete (toggle ativo/inativo) — inativos visíveis com esmaecimento |
+| R5 | Status: ATIVO, SUSPENSO, ENCERRADO — com default ATIVO |
+| R6 | Auditoria: toggle registrado como TOGGLE_ATIVO no service |
+| R7 | Badge visual: Ativo (verde), Vencendo ≤30d (amarelo), Vencido (vermelho), Suspenso (cinza), Encerrado (cinza) |
+| R8 | listByCliente(clienteId) retorna contratos de um cliente específico |
+
+### 4.6 Alertas
+
+| Regra | Descrição |
+|-------|-----------|
+| R1 | Configuração via KV store (modelo Configuracao existente) |
+| R2 | Dois tipos: CONTRATO_VENCENDO (dias configuráveis, default 30) e CONTRATO_VENCIDO |
+| R3 | Alertas gerados dinamicamente: query contratos ATIVOS + cálculo de dias restantes |
+| R4 | Sino no header: badge com contagem + dropdown com lista |
+| R5 | Dashboard: card de alertas com contagem por tipo |
+| R6 | Página /alerts: configuração (dias, toggle por tipo) + lista de alertas ativos |
+| R7 | Polling a cada 60s para atualização automática |
+
+### 4.7 Equipes e Controle de Acesso
 
 | Regra | Descrição |
 |-------|-----------|
@@ -154,7 +179,7 @@ PENDENTE ──→ RECEBIDO ──→ ENTREGUE ──→ (terminal)
 | R4 | Equipe vinculada a categorias (N:N) e usuários (N:N) |
 | R5 | Menu Cadastro: Equipes/Usuários \| Clientes e Contatos/Equipamentos \| Catálogo (unificado com abas: Serviços, Peças, Categorias — Contatos integrado ao modal do cliente) |
 
-### 4.6 Autenticação
+### 4.8 Autenticação
 
 | Regra | Descrição |
 |-------|-----------|
@@ -164,7 +189,7 @@ PENDENTE ──→ RECEBIDO ──→ ENTREGUE ──→ (terminal)
 | R4 | Login imutável após criação |
 | R5 | Comparação timing-safe contra timing attacks |
 
-### 4.7 Inventário de Hardware
+### 4.9 Inventário de Hardware
 
 | Regra | Descrição |
 |-------|-----------|
@@ -173,7 +198,7 @@ PENDENTE ──→ RECEBIDO ──→ ENTREGUE ──→ (terminal)
 | R3 | Múltiplos registros por OS |
 | R4 | Hard delete |
 
-### 4.8 E-mail (Pipeline Completo)
+### 4.10 E-mail (Pipeline Completo)
 
 | Regra | Descrição |
 |-------|-----------|
@@ -196,7 +221,7 @@ PENDENTE ──→ RECEBIDO ──→ ENTREGUE ──→ (terminal)
 | R17 | Validação de ativo na conversão: `convertToOS()` rejeita contato inativo vinculado |
 | R18 | Service layer: `ClienteContatoService` com regras de negócio (email único por cliente) e auditoria no toggle |
 
-### 4.9 E-mail (Notificações SMTP)
+### 4.11 E-mail (Notificações SMTP)
 
 | Regra | Descrição |
 |-------|-----------|
@@ -206,7 +231,7 @@ PENDENTE ──→ RECEBIDO ──→ ENTREGUE ──→ (terminal)
 | R4 | Conclusão: gera PDF temporário, anexa, envia, deleta temp |
 | R5 | Fire-and-forget: erros logados, nunca propagados |
 
-### 4.10 Backup & Restore
+### 4.12 Backup & Restore
 
 | Regra | Descrição |
 |-------|-----------|
@@ -214,7 +239,7 @@ PENDENTE ──→ RECEBIDO ──→ ENTREGUE ──→ (terminal)
 | R2 | Restore cria backup de segurança pré-restauração (PRE_RESTORE_*.db) |
 | R3 | Suporta .gz (decompacta) e .db (cópia direta) |
 
-### 4.11 Logs de Auditoria
+### 4.13 Logs de Auditoria
 
 | Regra | Descrição |
 |-------|-----------|
@@ -223,7 +248,7 @@ PENDENTE ──→ RECEBIDO ──→ ENTREGUE ──→ (terminal)
 | R3 | DadosContexto serializados como JSON |
 | R4 | Exportação CSV/JSON com escape adequado |
 
-### 4.12 PDF (9 relatórios)
+### 4.14 PDF (9 relatórios)
 
 | Regra | Descrição |
 |-------|-----------|

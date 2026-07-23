@@ -149,6 +149,21 @@ export const IPC_CHANNELS = {
     REMOVE_USUARIO: 'equipe:remove-usuario',
     GET_BY_USUARIO: 'equipe:get-by-usuario',
   },
+  CONTRATO: {
+    LIST: 'contrato:list',
+    LIST_ALL: 'contrato:list-all',
+    GET: 'contrato:get',
+    LIST_BY_CLIENTE: 'contrato:list-by-cliente',
+    CREATE: 'contrato:create',
+    UPDATE: 'contrato:update',
+    DELETE: 'contrato:delete',
+  },
+  ALERTA: {
+    LIST: 'alerta:list',
+    COUNT: 'alerta:count',
+    CONFIG_GET: 'alerta:config-get',
+    CONFIG_SAVE: 'alerta:config-save',
+  },
 } as const;
 
 /**

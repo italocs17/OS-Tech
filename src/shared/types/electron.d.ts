@@ -167,6 +167,23 @@ export interface EventAPI {
   off: (channel: string, callback: (...args: unknown[]) => void) => void;
 }
 
+export interface ContratoAPI {
+  list: () => Promise<unknown>;
+  listAll: () => Promise<unknown>;
+  get: (id: number) => Promise<unknown>;
+  listByCliente: (clienteId: number) => Promise<unknown>;
+  create: (data: unknown) => Promise<unknown>;
+  update: (id: number, data: unknown) => Promise<unknown>;
+  delete: (id: number) => Promise<unknown>;
+}
+
+export interface AlertaAPI {
+  list: () => Promise<unknown>;
+  count: () => Promise<unknown>;
+  configGet: () => Promise<unknown>;
+  configSave: (config: unknown) => Promise<unknown>;
+}
+
 declare global {
   interface Window {
     osTech: {
@@ -184,6 +201,8 @@ declare global {
       equipe: EquipeAPI;
       peca: PecaAPI;
       email: EmailAPI;
+      contrato: ContratoAPI;
+      alerta: AlertaAPI;
       events: EventAPI;
     };
   }

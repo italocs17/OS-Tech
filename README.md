@@ -2,7 +2,7 @@
 
 Sistema desktop (Electron) 100% offline para gestão de assistência técnica de computadores: cadastro de clientes, equipamentos, ordens de serviço com máquina de status, inventário de hardware (manual), geração de PDFs, backup/restore e logs de auditoria.
 
-**Versão atual:** 2.3.5
+**Versão atual:** 2.4.0
 
 ---
 
@@ -367,7 +367,32 @@ npx prisma migrate dev --name <nome>
 
 ## Histórico de Versões
 
-### ✅ v2.3.5 (Atual)
+### ✅ v2.4.0 (Atual)
+
+**Sistema de Contratos:**
+- Nova entidade `Contrato` vinculada a clientes (Prisma model + migration)
+- Aba "Contratos" no modal do cliente (3 abas: Dados, Contatos, Contratos)
+- CRUD completo: número, descrição, data início/fim, observações, status (ATIVO/SUSPENSO/ENCERRADO)
+- Toggle ativo/inativo com auditoria
+- Badge de status: Ativo (verde), Vencendo ≤30d (amarelo), Vencido (vermelho), Suspenso (cinza), Encerrado (cinza)
+- Backend completo: Repository, Service, IPC (7 canais), Preload, Zod validator
+
+**Sistema de Alertas:**
+- Configuração via página dedicada `/alerts` (menu Cadastro > Alertas)
+- Alertas: "Contrato vencendo" (dias configuráveis) e "Contrato vencido"
+- Sino 🔔 funcional no header com badge de contagem + dropdown com lista de alertas
+- Card de alertas no Dashboard com contagem por tipo
+- Configurações salvas no modelo `Configuracao` (KV store existente)
+- Polling de alertas a cada 60s (mesmo padrão do email)
+
+**Sidebar:**
+- Novo item "Alertas" (🔔) no menu Cadastro (abaixo de Catálogo, com separador)
+- Acesso: PROPRIETARIO/GESTOR
+
+**Seed de teste:**
+- 3 contratos de exemplo (1 ativo anual, 1 vencendo, 1 encerrado)
+
+### v2.3.5
 
 **Padronização visual de toggle ativo/inativo:**
 - Regra: inativos **sempre visíveis**, esmaecidos (`opacity-50`), nunca invisíveis

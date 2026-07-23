@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../../components/layout/page-header';
 import { StatusBadge } from '../../components/shared/status-badge';
 import { LoadingSpinner } from '../../components/shared/loading-spinner';
-import { formatDate } from '../../lib/utils';
+import { formatDate, cn } from '../../lib/utils';
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -47,6 +47,15 @@ export function DashboardPage() {
     queryFn: () => window.osTech.email.listByStatus('AGUARDANDO_ATENDIMENTO') as Promise<any[]>,
   });
 
+  const { data: alertas } = useQuery({
+    queryKey: ['alertas-dashboard'],
+    queryFn: () => window.osTech.alerta.list() as Promise<any[]>,
+  });
+
+  const alertasList = Array.isArray(alertas) ? alertas : [];
+  const alertasVencendo = alertasList.filter((a: any) => a.tipo === 'CONTRATO_VENCENDO').length;
+  const alertasVencidos = alertasList.filter((a: any) => a.tipo === 'CONTRATO_VENCIDO').length;
+
   if (loadingOS || loadingStats) {
     return <LoadingSpinner />;
   }
@@ -58,7 +67,7 @@ export function DashboardPage() {
     <div className="space-y-6">
       <PageHeader title="Dashboard" description="Visao geral do sistema" />
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
         <StatCard title="Clientes" value={stats?.clientes ?? 0} icon="👥" to="/clients" onClick={() => navigate('/clients')} />
         <StatCard
           title="Equipamentos"
@@ -76,7 +85,48 @@ export function DashboardPage() {
           onClick={() => navigate('/email-inbox')}
         />
         <StatCard title="Total de OS" value={stats?.osTotal ?? 0} icon="📊" to="/os" onClick={() => navigate('/os')} />
+        <StatCard
+          title="Alertas"
+          value={alertasList.length}
+          icon="🔔"
+          to="/alerts"
+          onClick={() => navigate('/alerts')}
+          alertVencendo={alertasVencendo}
+          alertVencido={alertasVencidos}
+        />
       </div>
+
+      {alertasList.length > 0 && (
+        <div className="rounded-lg border bg-card">
+          <div className="border-b p-4">
+            <h2 className="font-semibold">🔔 Alertas de Contratos</h2>
+          </div>
+          <div className="divide-y">
+            {alertasList.slice(0, 5).map((alerta: any) => (
+              <div key={alerta.id} className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-3">
+                  <span className={cn(
+                    'h-2 w-2 rounded-full',
+                    alerta.tipo === 'CONTRATO_VENCIDO' ? 'bg-red-500' : 'bg-amber-500'
+                  )} />
+                  <div>
+                    <p className="text-sm font-medium">{alerta.titulo}</p>
+                    <p className="text-xs text-muted-foreground">{alerta.descricao}</p>
+                  </div>
+                </div>
+                <span className={cn(
+                  'rounded px-2 py-0.5 text-xs font-medium',
+                  alerta.tipo === 'CONTRATO_VENCIDO'
+                    ? 'bg-red-100 text-red-700'
+                    : 'bg-amber-100 text-amber-700'
+                )}>
+                  {alerta.tipo === 'CONTRATO_VENCIDO' ? 'Vencido' : 'Vencendo'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-lg border bg-card">
@@ -173,12 +223,16 @@ function StatCard({
   icon,
   to,
   onClick,
+  alertVencendo,
+  alertVencido,
 }: {
   title: string;
   value: number;
   icon: string;
   to?: string;
   onClick?: () => void;
+  alertVencendo?: number;
+  alertVencido?: number;
 }) {
   return (
     <button
@@ -190,6 +244,12 @@ function StatCard({
         <span className="text-2xl font-bold">{value}</span>
       </div>
       <p className="mt-2 text-sm text-muted-foreground">{title}</p>
+      {(alertVencendo ?? 0) + (alertVencido ?? 0) > 0 && (
+        <div className="mt-1 flex gap-2">
+          {alertVencendo ? <span className="text-xs text-amber-600">{alertVencendo} vencendo</span> : null}
+          {alertVencido ? <span className="text-xs text-red-600">{alertVencido} vencidos</span> : null}
+        </div>
+      )}
     </button>
   );
 }

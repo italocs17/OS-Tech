@@ -601,6 +601,44 @@ export interface AnexoEmail {
   dataUpload: Date;
 }
 
+// =============================================================================
+// CONTRATO
+// =============================================================================
+
+export interface Contrato {
+  id: number;
+  clienteId: number;
+  numero: string;
+  descricao: string | null;
+  dataInicio: Date;
+  dataFim: Date;
+  observacoes: string | null;
+  status: 'ATIVO' | 'SUSPENSO' | 'ENCERRADO';
+  ativo: boolean;
+  dataCadastro: Date;
+  cliente?: Cliente;
+}
+
+export interface CreateContratoDTO {
+  clienteId: number;
+  numero: string;
+  descricao?: string;
+  dataInicio: Date;
+  dataFim: Date;
+  observacoes?: string;
+  status?: 'ATIVO' | 'SUSPENSO' | 'ENCERRADO';
+}
+
+export interface UpdateContratoDTO {
+  numero?: string;
+  descricao?: string;
+  dataInicio?: Date;
+  dataFim?: Date;
+  observacoes?: string;
+  status?: 'ATIVO' | 'SUSPENSO' | 'ENCERRADO';
+  ativo?: boolean;
+}
+
 export interface LogFiltros {
   nivel?: string;
   categoria?: string;

@@ -7,9 +7,10 @@ import { Modal } from '../../components/shared/modal';
 import { SearchInput } from '../../components/shared/search-input';
 import { ClientForm } from '../../components/forms/client-form';
 import { ToggleSwitch } from '../../components/shared/toggle-switch';
+import { FormField } from '../../components/shared/form-field';
 import { AtivoBadge, ativoRowClass } from '../../components/shared/ativo-badge';
 import { formatDate, cn } from '../../lib/utils';
-import type { Cliente } from '@shared/types/entities.types';
+import type { Cliente, Contrato } from '@shared/types/entities.types';
 
 interface ClienteRow {
   id: number;
@@ -30,7 +31,7 @@ interface Contato {
   ativo: boolean;
 }
 
-type Tab = 'dados' | 'contatos';
+type Tab = 'dados' | 'contatos' | 'contratos';
 
 export function ClientsPage() {
   const queryClient = useQueryClient();
@@ -197,6 +198,11 @@ function TabbedClientDetail({
           active={activeTab === 'contatos'}
           onClick={() => onTabChange('contatos')}
         />
+        <TabButton
+          label="Contratos"
+          active={activeTab === 'contratos'}
+          onClick={() => onTabChange('contratos')}
+        />
       </div>
 
       {activeTab === 'dados' && (
@@ -209,6 +215,10 @@ function TabbedClientDetail({
 
       {activeTab === 'contatos' && (
         <ContatosTab clienteId={client.id} />
+      )}
+
+      {activeTab === 'contratos' && (
+        <ContratosTab clienteId={client.id} />
       )}
     </div>
   );
@@ -465,6 +475,222 @@ function ContatosTab({ clienteId }: { clienteId: number }) {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ContratosTab({ clienteId }: { clienteId: number }) {
+  const queryClient = useQueryClient();
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingContrato, setEditingContrato] = useState<Contrato | null>(null);
+  const [form, setForm] = useState({
+    numero: '',
+    descricao: '',
+    dataInicio: '',
+    dataFim: '',
+    observacoes: '',
+    status: 'ATIVO' as 'ATIVO' | 'SUSPENSO' | 'ENCERRADO',
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const { data: contratos, isLoading } = useQuery({
+    queryKey: ['cliente-contratos', clienteId],
+    queryFn: () => window.osTech.contrato.listByCliente(clienteId),
+  });
+
+  useEffect(() => {
+    if (!formOpen) {
+      setEditingContrato(null);
+      setForm({ numero: '', descricao: '', dataInicio: '', dataFim: '', observacoes: '', status: 'ATIVO' });
+      setErrors({});
+    }
+  }, [formOpen]);
+
+  const createMutation = useMutation({
+    mutationFn: (data: typeof form) =>
+      window.osTech.contrato.create({
+        clienteId,
+        numero: data.numero,
+        descricao: data.descricao || undefined,
+        dataInicio: new Date(data.dataInicio),
+        dataFim: new Date(data.dataFim),
+        observacoes: data.observacoes || undefined,
+        status: data.status,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cliente-contratos', clienteId] });
+      setFormOpen(false);
+    },
+    onError: (err: any) => setErrors({ form: err?.message || 'Erro ao criar contrato' }),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: typeof form }) =>
+      window.osTech.contrato.update(id, {
+        numero: data.numero,
+        descricao: data.descricao || undefined,
+        dataInicio: new Date(data.dataInicio),
+        dataFim: new Date(data.dataFim),
+        observacoes: data.observacoes || undefined,
+        status: data.status,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cliente-contratos', clienteId] });
+      setFormOpen(false);
+    },
+    onError: (err: any) => setErrors({ form: err?.message || 'Erro ao atualizar contrato' }),
+  });
+
+  const toggleAtivoMutation = useMutation({
+    mutationFn: ({ id, ativo }: { id: number; ativo: boolean }) =>
+      window.osTech.contrato.update(id, { ativo }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cliente-contratos', clienteId] });
+    },
+  });
+
+  const handleEdit = (contrato: Contrato) => {
+    setEditingContrato(contrato);
+    setForm({
+      numero: contrato.numero,
+      descricao: contrato.descricao || '',
+      dataInicio: new Date(contrato.dataInicio).toISOString().split('T')[0],
+      dataFim: new Date(contrato.dataFim).toISOString().split('T')[0],
+      observacoes: contrato.observacoes || '',
+      status: contrato.status,
+    });
+    setFormOpen(true);
+  };
+
+  const handleNew = () => {
+    setEditingContrato(null);
+    setForm({ numero: '', descricao: '', dataInicio: '', dataFim: '', observacoes: '', status: 'ATIVO' });
+    setFormOpen(true);
+  };
+
+  const handleSubmit = () => {
+    setErrors({});
+    const newErrors: Record<string, string> = {};
+    if (!form.numero.trim()) newErrors.numero = 'Número é obrigatório';
+    if (!form.dataInicio) newErrors.dataInicio = 'Data de início é obrigatória';
+    if (!form.dataFim) newErrors.dataFim = 'Data de fim é obrigatória';
+    if (form.dataInicio && form.dataFim && form.dataInicio > form.dataFim) {
+      newErrors.dataFim = 'Data de fim deve ser posterior à data de início';
+    }
+    if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
+
+    if (editingContrato) {
+      updateMutation.mutate({ id: editingContrato.id, data: form });
+    } else {
+      createMutation.mutate(form);
+    }
+  };
+
+  const getStatusBadge = (status: string, dataFim: Date) => {
+    const hoje = new Date();
+    const fim = new Date(dataFim);
+    const diasRestantes = Math.ceil((fim.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (status === 'ENCERRADO') return <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">Encerrado</span>;
+    if (status === 'SUSPENSO') return <span className="rounded bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-700">Suspenso</span>;
+    if (diasRestantes < 0) return <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">Vencido</span>;
+    if (diasRestantes <= 30) return <span className="rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">Vence em {diasRestantes}d</span>;
+    return <span className="rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Ativo</span>;
+  };
+
+  const items = Array.isArray(contratos) ? contratos : [];
+
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <button
+          onClick={handleNew}
+          className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          + Novo Contrato
+        </button>
+      </div>
+
+      {formOpen && (
+        <div className="space-y-3 rounded-lg border p-4">
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Número" required error={errors.numero}>
+              <input type="text" value={form.numero} onChange={(e) => setForm({ ...form, numero: e.target.value })}
+                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" placeholder="Ex: 001/2025" />
+            </FormField>
+            <FormField label="Status">
+              <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as typeof form.status })}
+                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                <option value="ATIVO">Ativo</option>
+                <option value="SUSPENSO">Suspenso</option>
+                <option value="ENCERRADO">Encerrado</option>
+              </select>
+            </FormField>
+          </div>
+          <FormField label="Descrição">
+            <input type="text" value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })}
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" placeholder="Ex: Contrato de suporte anual" />
+          </FormField>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Data Início" required error={errors.dataInicio}>
+              <input type="date" value={form.dataInicio} onChange={(e) => setForm({ ...form, dataInicio: e.target.value })}
+                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+            </FormField>
+            <FormField label="Data Fim" required error={errors.dataFim}>
+              <input type="date" value={form.dataFim} onChange={(e) => setForm({ ...form, dataFim: e.target.value })}
+                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+            </FormField>
+          </div>
+          <FormField label="Observações">
+            <textarea value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" rows={3}
+              placeholder="Serviços compreendidos, prazos, demais informações..." />
+          </FormField>
+          {errors.form && <p className="text-sm text-destructive">{errors.form}</p>}
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setFormOpen(false)} className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-accent">Cancelar</button>
+            <button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+              {createMutation.isPending || updateMutation.isPending ? 'Salvando...' : editingContrato ? 'Atualizar' : 'Cadastrar'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">Carregando...</p>
+      ) : items.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Nenhum contrato cadastrado</p>
+      ) : (
+        <div className="space-y-2">
+          {items.map((c: Contrato) => (
+            <div key={c.id} className={cn('flex items-center justify-between rounded-lg border p-3', ativoRowClass(c.ativo))}>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-sm">#{c.numero}</span>
+                  {getStatusBadge(c.status, c.dataFim)}
+                  <AtivoBadge ativo={c.ativo} />
+                </div>
+                {c.descricao && <p className="text-xs text-muted-foreground mt-1">{c.descricao}</p>}
+                <p className="text-xs text-muted-foreground">
+                  {formatDate(c.dataInicio)} a {formatDate(c.dataFim)}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => handleEdit(c)} disabled={!c.ativo}
+                  className="text-xs text-blue-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed">
+                  Editar
+                </button>
+                <ToggleSwitch
+                  checked={c.ativo}
+                  onChange={(ativo) => toggleAtivoMutation.mutate({ id: c.id, ativo })}
+                  label={c.ativo ? 'Desativar contrato' : 'Ativar contrato'}
+                />
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

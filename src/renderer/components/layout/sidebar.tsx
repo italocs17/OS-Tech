@@ -45,6 +45,8 @@ const menuItems: MenuEntry[] = [
       { to: '/equipment', label: 'Equipamentos', icon: '🖥️', perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'] },
       { type: 'separator' },
       { to: '/catalog', label: 'Catálogo', icon: '📦', perfis: ['PROPRIETARIO', 'GESTOR', 'RECEPCIONISTA'] },
+      { type: 'separator' },
+      { to: '/alerts', label: 'Alertas', icon: '🔔', perfis: ['PROPRIETARIO', 'GESTOR'] },
     ],
   },
   { to: '/reports', label: 'Relatórios', icon: '📈', perfis: ['PROPRIETARIO', 'GESTOR'] },

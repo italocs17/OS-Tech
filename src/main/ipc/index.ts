@@ -17,6 +17,8 @@ import { registerSubcategoriaServicoIpcHandlers } from './subcategoria-servico.i
 import { registerPecaIpcHandlers } from './peca.ipc';
 import { registerEmailIpcHandlers } from './email.ipc';
 import { registerEquipeIpcHandlers } from './equipe.ipc';
+import { registerContratoIpcHandlers } from './contrato.ipc';
+import { registerAlertaIpcHandlers } from './alerta.ipc';
 
 export function registerAllIpcHandlers() {
   registerClientIpcHandlers();
@@ -33,4 +35,6 @@ export function registerAllIpcHandlers() {
   registerPecaIpcHandlers();
   registerEmailIpcHandlers();
   registerEquipeIpcHandlers();
+  registerContratoIpcHandlers();
+  registerAlertaIpcHandlers();
 }

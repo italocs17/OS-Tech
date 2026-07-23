@@ -436,6 +436,45 @@ async function main() {
     },
   });
 
+  // ── Contratos ────────────────────────────────────────────────────────
+  const hoje = new Date();
+  await prisma.contrato.create({
+    data: {
+      clienteId: clientes[2].id, // Marcos Tech Solutions LTDA
+      numero: '001/2025',
+      descricao: 'Contrato de suporte anual - manutenção preventiva e corretiva',
+      dataInicio: new Date(hoje.getFullYear() - 1, 0, 1),
+      dataFim: new Date(hoje.getFullYear(), 11, 31),
+      observacoes: 'Serviços compreendidos: manutenção preventiva mensal, suporte remoto ilimitado, atendimento emergencial em até 4h.',
+      status: 'ATIVO',
+      ativo: true,
+    },
+  });
+  await prisma.contrato.create({
+    data: {
+      clienteId: clientes[0].id, // Pedro Henrique Almeida
+      numero: '002/2026',
+      descricao: 'Contrato de consultoria em TI - infraestrutura de redes',
+      dataInicio: new Date(hoje.getFullYear(), 0, 15),
+      dataFim: new Date(hoje.getFullYear(), 6, 15),
+      observacoes: 'Consultoria para migração de rede. Prazo: 6 meses. Inclui documentação técnica.',
+      status: 'ATIVO',
+      ativo: true,
+    },
+  });
+  await prisma.contrato.create({
+    data: {
+      clienteId: clientes[1].id, // Ana Beatriz Souza
+      numero: '003/2025',
+      descricao: 'Contrato de suporte técnico pontual',
+      dataInicio: new Date(hoje.getFullYear() - 1, 3, 1),
+      dataFim: new Date(hoje.getFullYear() - 1, 8, 30),
+      observacoes: 'Contrato encerrado. Suporte por 6 meses para manutenção de equipamentos.',
+      status: 'ENCERRADO',
+      ativo: true,
+    },
+  });
+
   // ── Logs ────────────────────────────────────────────────────────────────
   const logsData = [
     { dataHora: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000), nivel: 'INFO', categoria: 'AUTH', acao: 'LOGIN', descricao: 'Usuário admin realizou login com sucesso.', usuarioId: usuarios[0].id },

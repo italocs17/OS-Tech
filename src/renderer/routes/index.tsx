@@ -11,6 +11,7 @@ import { ReportsPage } from '../pages/Reports';
 import { BackupPage } from '../pages/Backup';
 import { LogsPage } from '../pages/Logs';
 import { EmailInboxPage } from '../pages/EmailInbox';
+import { AlertsPage } from '../pages/Alerts';
 
 export function AppRoutes() {
   return (
@@ -27,6 +28,7 @@ export function AppRoutes() {
       <Route path="/backup" element={<BackupPage />} />
       <Route path="/email-inbox" element={<EmailInboxPage />} />
       <Route path="/logs" element={<LogsPage />} />
+      <Route path="/alerts" element={<AlertsPage />} />
     </Routes>
   );
 }

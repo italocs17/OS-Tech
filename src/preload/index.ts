@@ -12,6 +12,8 @@ import { subcategoriaServicoAPI } from './subcategoria-servico.preload';
 import { pecaAPI } from './peca.preload';
 import { emailAPI } from './email.preload';
 import { equipeAPI } from './equipe.preload';
+import { contratoAPI } from './contrato.preload';
+import { alertaAPI } from './alerta.preload';
 
 const eventAPI = {
   on: (channel: string, callback: (...args: unknown[]) => void) => {
@@ -40,5 +42,7 @@ contextBridge.exposeInMainWorld('osTech', {
   equipe: equipeAPI,
   peca: pecaAPI,
   email: emailAPI,
+  contrato: contratoAPI,
+  alerta: alertaAPI,
   events: eventAPI,
 });

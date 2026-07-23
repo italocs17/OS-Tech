@@ -108,6 +108,13 @@ enum StatusEmail {
   REJEITADO
 }
 
+/// Status de um contrato
+enum StatusContrato {
+  ATIVO
+  SUSPENSO
+  ENCERRADO
+}
+
 // =============================================================================
 // MODELOS
 // =============================================================================
@@ -131,6 +138,7 @@ model Cliente {
   equipamentos     Equipamento[]
   ordensServico    OrdemServico[]
   contatos         ClienteContato[]
+  contratos        Contrato[]
   solicitacoesEmail EmailSolicitacao[]
 
   @@index([nome])
@@ -156,6 +164,28 @@ model ClienteContato {
   @@index([email])
   @@index([clienteId])
   @@map("cliente_contato")
+}
+
+/// Contrato - Contratos de prestacao de servico vinculados a clientes
+/// Regras: numero unico por cliente, soft delete, datas obrigatorias
+model Contrato {
+  id           Int             @id @default(autoincrement())
+  clienteId    Int
+  numero       String
+  descricao    String?
+  dataInicio   DateTime
+  dataFim      DateTime
+  observacoes  String?
+  status       StatusContrato  @default(ATIVO)
+  ativo        Boolean         @default(true)
+  dataCadastro DateTime        @default(now())
+
+  cliente Cliente @relation(fields: [clienteId], references: [id])
+
+  @@index([clienteId])
+  @@index([dataFim])
+  @@index([status])
+  @@map("contrato")
 }
 
 /// Equipamento - Equipamentos sob manutencao
