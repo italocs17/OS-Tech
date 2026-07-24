@@ -86,7 +86,7 @@ export function OSDetailPage() {
 
   const openAction = (name: string) => {
     setActionError('');
-    setOpenDropdown(name);
+    setOpenDropdown(openDropdown === name ? null : name);
   };
 
   const { data: os, isLoading } = useQuery({
@@ -654,7 +654,7 @@ export function OSDetailPage() {
                   ref={statusBtnRef}
                   onClick={() => { setSelectedStatus(''); setMotivoCancelamento(''); openAction('status'); }}
                   disabled={isTerminal}
-                  className="w-full rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  className={`w-full rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 ${openDropdown === 'status' ? 'ring-2 ring-primary ring-offset-2' : ''}`}
                 >
                   Alterar Status
                 </button>
@@ -664,7 +664,7 @@ export function OSDetailPage() {
                 <button
                   ref={pausarBtnRef}
                   onClick={() => { setJustificativa(''); openAction('pausar'); }}
-                  className="w-full rounded-lg border border-orange-400 px-3 py-2 text-sm font-medium text-orange-700 hover:bg-orange-50"
+                  className={`w-full rounded-lg border border-orange-400 px-3 py-2 text-sm font-medium text-orange-700 hover:bg-orange-50 ${openDropdown === 'pausar' ? 'ring-2 ring-orange-400 ring-offset-2 bg-orange-50' : ''}`}
                 >
                   Pausar OS
                 </button>
@@ -674,7 +674,7 @@ export function OSDetailPage() {
                 <button
                   ref={retomarBtnRef}
                   onClick={() => { setJustificativa(''); openAction('retomar'); }}
-                  className="w-full rounded-lg border border-green-400 px-3 py-2 text-sm font-medium text-green-700 hover:bg-green-50"
+                  className={`w-full rounded-lg border border-green-400 px-3 py-2 text-sm font-medium text-green-700 hover:bg-green-50 ${openDropdown === 'retomar' ? 'ring-2 ring-green-400 ring-offset-2 bg-green-50' : ''}`}
                 >
                   Retomar OS
                 </button>
@@ -684,7 +684,7 @@ export function OSDetailPage() {
                 ref={eventoBtnRef}
                 onClick={() => { setEventDesc(''); openAction('evento'); }}
                 disabled={isTerminal}
-                className="w-full rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
+                className={`w-full rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50 ${openDropdown === 'evento' ? 'ring-2 ring-primary ring-offset-2 bg-accent' : ''}`}
               >
                 Novo Evento
               </button>
@@ -696,7 +696,7 @@ export function OSDetailPage() {
                   openAction('item');
                 }}
                 disabled={isItemBlocked}
-                className="w-full rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
+                className={`w-full rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50 ${openDropdown === 'item' ? 'ring-2 ring-primary ring-offset-2 bg-accent' : ''}`}
               >
                 Adicionar Peças/Serviços
               </button>
@@ -705,7 +705,7 @@ export function OSDetailPage() {
                 ref={equipamentoBtnRef}
                 onClick={() => { setShowNewEquipmentForm(false); openAction('equipamento'); }}
                 disabled={isTerminal}
-                className="w-full rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
+                className={`w-full rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50 ${openDropdown === 'equipamento' ? 'ring-2 ring-primary ring-offset-2 bg-accent' : ''}`}
               >
                 Selecionar Equipamento
               </button>
@@ -714,7 +714,7 @@ export function OSDetailPage() {
                 ref={categoriaBtnRef}
                 onClick={() => openAction('categoria')}
                 disabled={isTerminal}
-                className="w-full rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
+                className={`w-full rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50 ${openDropdown === 'categoria' ? 'ring-2 ring-primary ring-offset-2 bg-accent' : ''}`}
               >
                 Categoria do Serviço
               </button>
@@ -723,7 +723,7 @@ export function OSDetailPage() {
                 ref={hardwareBtnRef}
                 onClick={() => { setHardwareText(''); openAction('hardware'); }}
                 disabled={isTerminal}
-                className="w-full rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
+                className={`w-full rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50 ${openDropdown === 'hardware' ? 'ring-2 ring-primary ring-offset-2 bg-accent' : ''}`}
               >
                 Registrar Hardware
               </button>

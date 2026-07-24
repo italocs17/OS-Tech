@@ -9,14 +9,14 @@ interface ActionDropdownProps {
   width?: string;
 }
 
-export function ActionDropdown({ open, onClose, anchorRef, title, children, width = 'w-72' }: ActionDropdownProps) {
-  const dropdownRef = useRef<HTMLDivElement>(null);
+export function ActionDropdown({ open, onClose, anchorRef, title, children, width = 'w-80' }: ActionDropdownProps) {
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const handleClickOutside = useCallback(
     (e: MouseEvent) => {
       if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node) &&
+        cardRef.current &&
+        !cardRef.current.contains(e.target as Node) &&
         anchorRef.current &&
         !anchorRef.current.contains(e.target as Node)
       ) {
@@ -47,20 +47,22 @@ export function ActionDropdown({ open, onClose, anchorRef, title, children, widt
   if (!open) return null;
 
   return (
-    <div
-      ref={dropdownRef}
-      className={`absolute z-40 mt-1 rounded-lg border bg-card shadow-lg ${width}`}
-    >
-      <div className="flex items-center justify-between border-b px-4 py-2">
-        <h3 className="text-sm font-semibold">{title}</h3>
-        <button
-          onClick={onClose}
-          className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-        >
-          ✕
-        </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div
+        ref={cardRef}
+        className={`rounded-xl border bg-card shadow-xl ${width}`}
+      >
+        <div className="flex items-center justify-between border-b px-4 py-3">
+          <h3 className="text-sm font-semibold">{title}</h3>
+          <button
+            onClick={onClose}
+            className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="px-4 py-4">{children}</div>
       </div>
-      <div className="px-4 py-3">{children}</div>
     </div>
   );
 }
