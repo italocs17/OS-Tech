@@ -18,7 +18,7 @@ interface OSRow {
   status: string;
   dataEntrada: string | Date;
   cliente?: { nome: string };
-  equipamento?: { marca: string; modelo: string };
+  equipamento?: { etiqueta: string; marca: string; modelo: string };
 }
 
 export function OSPage() {
@@ -61,6 +61,15 @@ export function OSPage() {
             : 'ND',
       },
     {
+      key: 'etiqueta',
+      header: 'Etiqueta',
+      render: (item) => (
+        <span className="font-mono text-xs">
+          {item.equipamento?.etiqueta ?? 'ND'}
+        </span>
+      ),
+    },
+    {
       key: 'status',
       header: 'Status',
       render: (item) => <StatusBadge status={item.status} />,
@@ -80,7 +89,8 @@ export function OSPage() {
     return data.filter(
       (o: OSRow) =>
         o.numeroOS.toLowerCase().includes(q) ||
-        (o.cliente?.nome ?? '').toLowerCase().includes(q)
+        (o.cliente?.nome ?? '').toLowerCase().includes(q) ||
+        (o.equipamento?.etiqueta ?? '').toLowerCase().includes(q)
     );
   }, [data, searchQuery]);
 
@@ -101,7 +111,7 @@ export function OSPage() {
         }
       />
       <SearchInput
-        placeholder="Buscar por nº OS ou cliente..."
+        placeholder="Buscar por nº OS, cliente ou etiqueta..."
         value={searchQuery}
         onChange={setSearchQuery}
         className="max-w-sm"
