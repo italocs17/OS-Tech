@@ -6,6 +6,7 @@ import { PageHeader } from '../../../components/layout/page-header';
 import { StatusBadge } from '../../../components/shared/status-badge';
 import { LoadingSpinner } from '../../../components/shared/loading-spinner';
 import { ActionDropdown } from '../../../components/shared/action-dropdown';
+import { Modal } from '../../../components/shared/modal';
 import { FormField } from '../../../components/shared/form-field';
 import { CurrencyInput } from '../../../components/shared/currency-input';
 import { formatDate, formatDateTime, formatCurrency, formatCPF_CNPJ, formatPhone } from '../../../lib/utils';
@@ -67,6 +68,8 @@ export function OSDetailPage() {
   const [showAllEvents, setShowAllEvents] = useState(false);
 
   const [showNewEquipmentForm, setShowNewEquipmentForm] = useState(false);
+
+  const [confirmarEntrega, setConfirmarEntrega] = useState(false);
 
   const [actionError, setActionError] = useState('');
 
@@ -633,6 +636,32 @@ export function OSDetailPage() {
         </div>
 
         <div className="space-y-4">
+          <InfoCard title="Logística">
+            <div className="space-y-2">
+              {osData.statusLogistico === 'PENDENTE' && (
+                <button
+                  onClick={() => logisticoMutation.mutate('RECEBIDO')}
+                  disabled={isTerminal || logisticoMutation.isPending}
+                  className="w-full rounded-lg border border-blue-400 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                >
+                  {logisticoMutation.isPending ? 'Recebendo...' : 'Receber Equipamento'}
+                </button>
+              )}
+              {osData.statusLogistico === 'RECEBIDO' && (
+                <button
+                  onClick={() => setConfirmarEntrega(true)}
+                  disabled={isTerminal || logisticoMutation.isPending}
+                  className="w-full rounded-lg border border-green-400 px-3 py-2 text-sm font-medium text-green-700 hover:bg-green-50 disabled:opacity-50"
+                >
+                  Entregar Equipamento
+                </button>
+              )}
+              {osData.statusLogistico === 'ENTREGUE' && (
+                <p className="text-xs text-muted-foreground">Equipamento entregue</p>
+              )}
+            </div>
+          </InfoCard>
+
           <InfoCard title="Ações">
             {actionError && (
               <p className="mb-2 text-xs text-destructive">{actionError}</p>
@@ -961,32 +990,6 @@ export function OSDetailPage() {
             </div>
           </InfoCard>
 
-          <InfoCard title="Logística">
-            <div className="space-y-2">
-              {osData.statusLogistico === 'PENDENTE' && (
-                <button
-                  onClick={() => logisticoMutation.mutate('RECEBIDO')}
-                  disabled={isTerminal || logisticoMutation.isPending}
-                  className="w-full rounded-lg border border-blue-400 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
-                >
-                  {logisticoMutation.isPending ? 'Recebendo...' : 'Receber Equipamento'}
-                </button>
-              )}
-              {osData.statusLogistico === 'RECEBIDO' && (
-                <button
-                  onClick={() => logisticoMutation.mutate('ENTREGUE')}
-                  disabled={isTerminal || logisticoMutation.isPending}
-                  className="w-full rounded-lg border border-green-400 px-3 py-2 text-sm font-medium text-green-700 hover:bg-green-50 disabled:opacity-50"
-                >
-                  {logisticoMutation.isPending ? 'Entregando...' : 'Entregar Equipamento'}
-                </button>
-              )}
-              {osData.statusLogistico === 'ENTREGUE' && (
-                <p className="text-xs text-muted-foreground">Equipamento entregue</p>
-              )}
-            </div>
-          </InfoCard>
-
           <InfoCard title="Financeiro">
             <div className="space-y-2 relative">
               <button
@@ -1128,6 +1131,36 @@ export function OSDetailPage() {
         </div>
       </div>
 
+      <Modal
+        open={confirmarEntrega}
+        title="Confirmar Entrega"
+        onClose={() => setConfirmarEntrega(false)}
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Tem certeza que deseja entregar o equipamento? Esta ação não pode ser desfeita.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                logisticoMutation.mutate('ENTREGUE');
+                setConfirmarEntrega(false);
+              }}
+              disabled={logisticoMutation.isPending}
+              className="flex-1 rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+            >
+              {logisticoMutation.isPending ? 'Entregando...' : 'Confirmar'}
+            </button>
+            <button
+              onClick={() => setConfirmarEntrega(false)}
+              className="flex-1 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

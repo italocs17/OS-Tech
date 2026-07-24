@@ -1,4 +1,4 @@
-# OS.Tech v2.4.0 — Mapa de Lógica e Regras de Negócio
+# OS.Tech v2.4.1 — Mapa de Lógica e Regras de Negócio
 
 ## 1. Arquitetura Geral
 

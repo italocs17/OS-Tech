@@ -2,7 +2,7 @@
 
 Sistema desktop (Electron) 100% offline para gestão de assistência técnica de computadores: cadastro de clientes, equipamentos, ordens de serviço com máquina de status, inventário de hardware (manual), geração de PDFs, backup/restore e logs de auditoria.
 
-**Versão atual:** 2.4.0
+**Versão atual:** 2.4.1
 
 ---
 
@@ -367,7 +367,25 @@ npx prisma migrate dev --name <nome>
 
 ## Histórico de Versões
 
-### ✅ v2.4.0 (Atual)
+### ✅ v2.4.1 (Atual)
+
+**Ordens de Serviço:**
+- Botão "Atender" (verde) para OS aguardando atendimento — altera direto para Em Atendimento
+- Botão "Alterar Status" (preto) para outros status não-terminais
+- Opção "Pausado" removida do dropdown (já tem botão próprio)
+- Campo de motivo obrigatório ao cancelar OS (registrado no histórico)
+- Coluna "Etiqueta" na listagem de OS (entre Equipamento e Status)
+- Busca por etiqueta habilitada (além de nº OS e cliente)
+- Seções "Logística" e "Ações" reordenadas (Logística acima)
+- Diálogos de ação centralizados na tela com backdrop
+- Toggle: clicar no mesmo botão fecha o diálogo
+- Botão que abriu o diálogo fica destacado (ring visual)
+- Confirmação de entrega com modal "Esta ação não pode ser desfeita"
+
+**Recibo de Entrega (PDF):**
+- Texto de confirmação acima da assinatura: "Confirmo que o equipamento acima descrito, foi devolvido/entregue pela assistência técnica."
+
+### v2.4.0
 
 **Sistema de Contratos:**
 - Nova entidade `Contrato` vinculada a clientes (Prisma model + migration)

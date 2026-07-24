@@ -702,6 +702,11 @@ export class PDFService {
     }
 
     doc.moveDown(3);
+    doc.fontSize(10).text(
+      'Confirmo que o equipamento acima descrito, foi devolvido/entregue pela assistência técnica.',
+      { align: 'center' }
+    );
+    doc.moveDown(1);
     doc.fontSize(11).text('_________________________________', { align: 'center' });
     doc.text('Assinatura do Cliente', { align: 'center' });
     doc.moveDown(1);
