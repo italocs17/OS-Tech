@@ -19,8 +19,8 @@ export const osAPI = {
   update: (id: number, data: unknown) =>
     ipcRenderer.invoke(IPC_CHANNELS.OS.UPDATE, id, data),
   delete: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.OS.DELETE, id),
-  changeStatus: (id: number, status: string, usuarioId: number) =>
-    ipcRenderer.invoke(IPC_CHANNELS.OS.CHANGE_STATUS, id, status, usuarioId),
+  changeStatus: (id: number, status: string, usuarioId: number, motivo?: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.OS.CHANGE_STATUS, id, status, usuarioId, motivo),
   pausar: (id: number, justificativa: string, usuarioId: number) =>
     ipcRenderer.invoke(IPC_CHANNELS.OS.PAUSAR, id, justificativa, usuarioId),
   retomar: (id: number, justificativa: string, usuarioId: number) =>

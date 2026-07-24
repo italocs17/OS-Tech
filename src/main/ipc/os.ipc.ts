@@ -59,8 +59,8 @@ export function registerOSIpcHandlers() {
   // ---------------------------------------------------------------------------
   ipcMain.handle(
     IPC_CHANNELS.OS.CHANGE_STATUS,
-    async (_, id: number, status, usuarioId: number) => {
-      return osService.changeStatus(id, status, usuarioId);
+    async (_, id: number, status, usuarioId: number, motivo?: string) => {
+      return osService.changeStatus(id, status, usuarioId, motivo);
     }
   );
 

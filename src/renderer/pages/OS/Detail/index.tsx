@@ -71,6 +71,7 @@ export function OSDetailPage() {
   const [actionError, setActionError] = useState('');
 
   const [justificativa, setJustificativa] = useState('');
+  const [motivoCancelamento, setMotivoCancelamento] = useState('');
 
   const statusBtnRef = useRef<HTMLButtonElement>(null);
   const pausarBtnRef = useRef<HTMLButtonElement>(null);
@@ -153,11 +154,12 @@ export function OSDetailPage() {
 
   const statusMutation = useMutation({
     mutationFn: () =>
-      window.osTech.os.changeStatus(osId, selectedStatus, user!.id),
+      window.osTech.os.changeStatus(osId, selectedStatus, user!.id, selectedStatus === 'CANCELADA' ? motivoCancelamento : undefined),
     onSuccess: () => {
       invalidateAllOS();
       setOpenDropdown(null);
       setActionError('');
+      setMotivoCancelamento('');
     },
     onError: (err: Error) => setActionError(err.message),
   });
@@ -304,7 +306,7 @@ export function OSDetailPage() {
 
   const TRANSICOES_PERMITIDAS: Record<string, string[]> = {
     AGUARDANDO_ATENDIMENTO: ['EM_ATENDIMENTO', 'CANCELADA'],
-    EM_ATENDIMENTO: ['PAUSADO', 'CONCLUIDA', 'CANCELADA'],
+    EM_ATENDIMENTO: ['CONCLUIDA', 'CANCELADA'],
     PAUSADO: ['EM_ATENDIMENTO', 'CANCELADA'],
     CONCLUIDA: [],
     CANCELADA: [],
@@ -636,14 +638,27 @@ export function OSDetailPage() {
               <p className="mb-2 text-xs text-destructive">{actionError}</p>
             )}
             <div className="space-y-2 relative">
-              <button
-                ref={statusBtnRef}
-                onClick={() => { setSelectedStatus(''); openAction('status'); }}
-                disabled={isTerminal}
-                className="w-full rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-              >
-                Alterar Status
-              </button>
+              {osData.status === 'AGUARDANDO_ATENDIMENTO' ? (
+                <button
+                  onClick={() => {
+                    setSelectedStatus('EM_ATENDIMENTO');
+                    statusMutation.mutate();
+                  }}
+                  disabled={statusMutation.isPending}
+                  className="w-full rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                >
+                  {statusMutation.isPending ? 'Atendendo...' : 'Atender'}
+                </button>
+              ) : (
+                <button
+                  ref={statusBtnRef}
+                  onClick={() => { setSelectedStatus(''); setMotivoCancelamento(''); openAction('status'); }}
+                  disabled={isTerminal}
+                  className="w-full rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                >
+                  Alterar Status
+                </button>
+              )}
 
               {osData.status === 'EM_ATENDIMENTO' && (
                 <button
@@ -718,7 +733,7 @@ export function OSDetailPage() {
                 <div className="space-y-3">
                   <select
                     value={selectedStatus}
-                    onChange={(e) => setSelectedStatus(e.target.value)}
+                    onChange={(e) => { setSelectedStatus(e.target.value); setMotivoCancelamento(''); }}
                     className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     <option value="">Selecione...</option>
@@ -732,9 +747,18 @@ export function OSDetailPage() {
                   {selectedStatus === 'CONCLUIDA' && !(osData as any).categoriaServicoId && (
                     <p className="text-xs text-destructive">A OS precisa ter uma Categoria do Serviço atribuída antes de ser concluída.</p>
                   )}
+                  {selectedStatus === 'CANCELADA' && (
+                    <textarea
+                      value={motivoCancelamento}
+                      onChange={(e) => setMotivoCancelamento(e.target.value)}
+                      rows={3}
+                      className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      placeholder="Informe o motivo do cancelamento..."
+                    />
+                  )}
                   <button
                     onClick={() => statusMutation.mutate()}
-                    disabled={!selectedStatus || !canConcluir || statusMutation.isPending}
+                    disabled={!selectedStatus || !canConcluir || statusMutation.isPending || (selectedStatus === 'CANCELADA' && !motivoCancelamento.trim())}
                     className="w-full rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                   >
                     {statusMutation.isPending ? 'Alterando...' : 'Confirmar'}

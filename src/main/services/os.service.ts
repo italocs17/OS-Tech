@@ -145,7 +145,7 @@ export class OSService {
   // MUDANCA DE STATUS
   // ===========================================================================
 
-  async changeStatus(id: number, novoStatus: StatusOS, usuarioId: number) {
+  async changeStatus(id: number, novoStatus: StatusOS, usuarioId: number, motivo?: string) {
     const validated = changeStatusSchema.parse({ status: novoStatus });
     const os = await this.getById(id);
 
@@ -180,27 +180,26 @@ export class OSService {
 
     const osAtualizada = await this.repository.update(id, dadosAtualizacao as any);
 
-    // Criar evento de mudanca de status
+    const descricaoEvento = validated.status === 'CANCELADA' && motivo
+      ? `Status alterado de ${statusAtual} para ${validated.status} — Motivo: ${motivo}`
+      : `Status alterado de ${statusAtual} para ${validated.status}`;
+
     await this.eventoRepository.create({
       osId: id,
       usuarioId,
-      descricao: `Status alterado de ${statusAtual} para ${validated.status}`,
+      descricao: descricaoEvento,
     });
 
-    // Notificar cliente por email (fire-and-forget)
-    const eventoData = {
+    this.notificationService.notifyEvento(id, {
       osId: id,
       usuarioId,
-      descricao: `Status alterado de ${statusAtual} para ${validated.status}`,
-    };
-    this.notificationService.notifyEvento(id, eventoData);
+      descricao: descricaoEvento,
+    });
 
-    // Na conclusao, enviar PDF anexado
     if (validated.status === 'CONCLUIDA') {
       this.notificationService.notifyConclusao(id, validated.status);
     }
 
-    // Registrar log
     await registrar({
       nivel: 'INFO',
       categoria: 'OS',

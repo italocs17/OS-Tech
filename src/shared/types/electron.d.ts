@@ -35,7 +35,7 @@ export interface OSAPI {
   create: (data: unknown, usuarioId: number) => Promise<unknown>;
   update: (id: number, data: unknown) => Promise<unknown>;
   delete: (id: number) => Promise<unknown>;
-  changeStatus: (id: number, status: string, usuarioId: number) => Promise<unknown>;
+  changeStatus: (id: number, status: string, usuarioId: number, motivo?: string) => Promise<unknown>;
   pausar: (id: number, justificativa: string, usuarioId: number) => Promise<unknown>;
   retomar: (id: number, justificativa: string, usuarioId: number) => Promise<unknown>;
   changeLogisticoStatus: (id: number, status: string, usuarioId: number) => Promise<unknown>;
