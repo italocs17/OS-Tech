@@ -71,4 +71,8 @@ export class EmailRepository {
   async createAnexo(data: { emailSolicitacaoId: number; nomeArquivo: string; caminhoArquivo: string; tamanho: number; mimeType?: string }) {
     return prisma.anexoEmail.create({ data });
   }
+
+  async findAnexoById(id: number) {
+    return prisma.anexoEmail.findUnique({ where: { id } });
+  }
 }

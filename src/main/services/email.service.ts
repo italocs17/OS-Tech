@@ -279,29 +279,50 @@ export class EmailService {
   }
 
   private parseMIMEBody(rawEmail: string, bodyStructure?: any): string | null {
+    const contentTypeMatch = rawEmail.match(/^Content-Type:\s*([^;\s]+)/im);
+    const contentType = contentTypeMatch ? contentTypeMatch[1].toLowerCase() : '';
     const boundaryMatch = rawEmail.match(/^Content-Type:\s*[^;]+;\s*boundary="?([^";\s\r\n]+)"?/im);
 
     if (boundaryMatch) {
       const boundary = boundaryMatch[1];
-      const parts = rawEmail.split(new RegExp(`--${boundary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:--)?`, 'g'));
+      const escapedBoundary = boundary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const parts = rawEmail.split(new RegExp(`--${escapedBoundary}(?:--)?`, 'g'));
 
-      const plainPart = this.findPartByType(parts, 'text/plain');
-      if (plainPart) {
-        return this.extractPartContent(plainPart, 'text/plain');
+      const textParts = parts.filter((part) => {
+        const ctMatch = part.match(/Content-Type:\s*([^\s;]+)/i);
+        if (!ctMatch) return false;
+        const type = ctMatch[1].toLowerCase();
+        return type === 'text/plain' || type === 'text/html';
+      });
+
+      if (contentType.includes('alternative') || contentType.includes('mixed')) {
+        const plainPart = this.findPartByType(textParts, 'text/plain');
+        if (plainPart) return this.extractPartContent(plainPart);
+
+        const htmlPart = this.findPartByType(textParts, 'text/html');
+        if (htmlPart) return this.htmlToText(this.extractPartContent(htmlPart));
       }
 
-      const htmlPart = this.findPartByType(parts, 'text/html');
-      if (htmlPart) {
-        return this.htmlToText(this.extractPartContent(htmlPart, 'text/html'));
+      for (const part of textParts) {
+        const ctMatch = part.match(/Content-Type:\s*([^\s;]+)/i);
+        if (ctMatch && ctMatch[1].toLowerCase() === 'text/plain') {
+          return this.extractPartContent(part);
+        }
+      }
+
+      for (const part of textParts) {
+        const ctMatch = part.match(/Content-Type:\s*([^\s;]+)/i);
+        if (ctMatch && ctMatch[1].toLowerCase() === 'text/html') {
+          return this.htmlToText(this.extractPartContent(part));
+        }
       }
     } else {
-      const contentType = rawEmail.match(/^Content-Type:\s*(\S+)/im);
       const mimeBody = this.extractMIMEBody(rawEmail);
       if (contentType && mimeBody) {
-        if (/text\/plain/i.test(contentType[1])) {
+        if (/text\/plain/i.test(contentType)) {
           return this.decodeBodyContent(mimeBody, rawEmail);
         }
-        if (/text\/html/i.test(contentType[1])) {
+        if (/text\/html/i.test(contentType)) {
           return this.htmlToText(this.decodeBodyContent(mimeBody, rawEmail));
         }
       }
@@ -317,14 +338,14 @@ export class EmailService {
   private findPartByType(parts: string[], mimeType: string): string | null {
     for (const part of parts) {
       const ctMatch = part.match(/Content-Type:\s*([^\s;]+)/i);
-      if (ctMatch && new RegExp(mimeType, 'i').test(ctMatch[1])) {
+      if (ctMatch && ctMatch[1].toLowerCase() === mimeType) {
         return part;
       }
     }
     return null;
   }
 
-  private extractPartContent(part: string, mimeType: string): string {
+  private extractPartContent(part: string): string {
     const headerEnd = this.findHeaderEnd(part);
     if (headerEnd === -1) return '';
 
@@ -350,27 +371,61 @@ export class EmailService {
   private decodeBodyContent(body: string, headers: string): string {
     const encodingMatch = headers.match(/Content-Transfer-Encoding:\s*(\S+)/i);
     const encoding = encodingMatch ? encodingMatch[1].toLowerCase() : '7bit';
+    const charset = this.extrairCharset(headers);
 
-    let content = body;
+    let decoded: Buffer;
 
     if (encoding === 'quoted-printable') {
-      content = this.decodeQuotedPrintable(content);
+      decoded = this.decodeQuotedPrintableToBuffer(body);
     } else if (encoding === 'base64') {
-      content = content.replace(/\s/g, '');
-      try {
-        content = Buffer.from(content, 'base64').toString('utf8');
-      } catch {}
+      const clean = body.replace(/\s/g, '');
+      decoded = Buffer.from(clean, 'base64');
+    } else {
+      decoded = Buffer.from(body, 'latin1');
     }
 
-    return content.trim();
+    return decoded.toString(charset as BufferEncoding).trim();
   }
 
-  private decodeQuotedPrintable(text: string): string {
-    let result = text.replace(/=\r?\n/g, '');
-    result = result.replace(/=([0-9A-Fa-f]{2})/g, (_, hex) => {
-      return String.fromCharCode(parseInt(hex, 16));
-    });
-    return result;
+  private extrairCharset(headers: string): string {
+    const match = headers.match(/charset="?([^";\s]+)"?/i);
+    if (match) {
+      const charset = match[1].toLowerCase().replace(/['"]/g, '');
+      const valid = ['utf-8', 'utf8', 'iso-8859-1', 'iso-8859-15', 'windows-1252', 'windows-1251', 'us-ascii', 'ascii'];
+      if (valid.includes(charset)) return charset === 'utf8' ? 'utf-8' : charset;
+      if (charset.startsWith('utf')) return 'utf-8';
+      if (charset.startsWith('iso-8859')) return 'iso-8859-1';
+      if (charset.startsWith('windows-125')) return charset;
+    }
+    return 'utf-8';
+  }
+
+  private decodeQuotedPrintableToBuffer(text: string): Buffer {
+    const softBreakRemoved = text.replace(/=\r?\n/g, '');
+    const bytes: number[] = [];
+    const regex = /=([0-9A-Fa-f]{2})/g;
+    let lastIndex = 0;
+    let match;
+
+    while ((match = regex.exec(softBreakRemoved)) !== null) {
+      const segment = softBreakRemoved.substring(lastIndex, match.index);
+      for (let i = 0; i < segment.length; i++) {
+        const code = segment.charCodeAt(i);
+        if (code < 128) bytes.push(code);
+        else bytes.push(...Buffer.from(segment.substring(i, i + 1), 'latin1'));
+      }
+      bytes.push(parseInt(match[1], 16));
+      lastIndex = regex.lastIndex;
+    }
+
+    const remaining = softBreakRemoved.substring(lastIndex);
+    for (let i = 0; i < remaining.length; i++) {
+      const code = remaining.charCodeAt(i);
+      if (code < 128) bytes.push(code);
+      else bytes.push(...Buffer.from(remaining.substring(i, i + 1), 'latin1'));
+    }
+
+    return Buffer.from(bytes);
   }
 
   private htmlToText(html: string): string {
@@ -387,6 +442,8 @@ export class EmailService {
     text = text.replace(/&gt;/g, '>');
     text = text.replace(/&quot;/g, '"');
     text = text.replace(/&#39;/g, "'");
+    text = text.replace(/&#x([0-9A-Fa-f]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+    text = text.replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)));
     text = text.replace(/\n{3,}/g, '\n\n');
     return text.trim();
   }
@@ -452,5 +509,19 @@ export class EmailService {
     }
 
     return false;
+  }
+
+  async downloadAttachment(anexoId: number): Promise<{ data: string; nomeArquivo: string; mimeType: string | null } | null> {
+    const anexo = await this.repository.findAnexoById(anexoId);
+    if (!anexo) return null;
+
+    if (!fs.existsSync(anexo.caminhoArquivo)) return null;
+
+    const buffer = fs.readFileSync(anexo.caminhoArquivo);
+    return {
+      data: buffer.toString('base64'),
+      nomeArquivo: anexo.nomeArquivo,
+      mimeType: anexo.mimeType,
+    };
   }
 }

@@ -111,6 +111,7 @@ export interface EmailAPI {
   deleteContato: (id: number) => Promise<unknown>;
   listAttachments: (emailSolicitacaoId: number) => Promise<unknown>;
   listAttachmentsByOs: (osId: number) => Promise<unknown>;
+  downloadAttachment: (anexoId: number) => Promise<{ data: string; nomeArquivo: string; mimeType: string | null } | null>;
 }
 
 export interface ServicoAPI {

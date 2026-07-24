@@ -125,6 +125,7 @@ export const IPC_CHANNELS = {
     DELETE_CONTATO: 'email:delete-contato',
     LIST_ATTACHMENTS: 'email:list-attachments',
     LIST_ATTACHMENTS_BY_OS: 'email:list-attachments-by-os',
+    DOWNLOAD_ATTACHMENT: 'email:download-attachment',
   },
   REPORT: {
     PDF: 'report:pdf',

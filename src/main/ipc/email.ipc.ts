@@ -87,4 +87,8 @@ export function registerEmailIpcHandlers() {
   ipcMain.handle(IPC_CHANNELS.EMAIL.LIST_ATTACHMENTS_BY_OS, async (_, osId: number) => {
     return solicitacaoService.listAnexosByOsId(osId);
   });
+
+  ipcMain.handle(IPC_CHANNELS.EMAIL.DOWNLOAD_ATTACHMENT, async (_, anexoId: number) => {
+    return emailService.downloadAttachment(anexoId);
+  });
 }

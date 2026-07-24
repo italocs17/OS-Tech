@@ -25,4 +25,5 @@ export const emailAPI = {
   deleteContato: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.EMAIL.DELETE_CONTATO, id),
   listAttachments: (emailSolicitacaoId: number) => ipcRenderer.invoke(IPC_CHANNELS.EMAIL.LIST_ATTACHMENTS, emailSolicitacaoId),
   listAttachmentsByOs: (osId: number) => ipcRenderer.invoke(IPC_CHANNELS.EMAIL.LIST_ATTACHMENTS_BY_OS, osId),
+  downloadAttachment: (anexoId: number) => ipcRenderer.invoke(IPC_CHANNELS.EMAIL.DOWNLOAD_ATTACHMENT, anexoId),
 };

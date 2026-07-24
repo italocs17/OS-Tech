@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { Modal } from '../../../components/shared/modal';
 import { formatDateTime } from '@/lib/utils';
 
@@ -40,17 +41,49 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function isImage(mimeType: string | null): boolean {
+  return !!mimeType && mimeType.startsWith('image/');
+}
+
 export function EmailDetail({ item, open, onClose }: EmailDetailProps) {
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
+
   const { data: anexos = [] } = useQuery({
     queryKey: ['email-attachments', item?.id],
     queryFn: () => window.osTech.email.listAttachments(item!.id) as Promise<AnexoEmail[]>,
     enabled: open && !!item?.id,
   });
 
+  const handleDownload = async (anexo: AnexoEmail) => {
+    setDownloadingId(anexo.id);
+    try {
+      const result = await window.osTech.email.downloadAttachment(anexo.id);
+      if (!result) return;
+
+      const binaryString = atob(result.data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      const blob = new Blob([bytes], { type: result.mimeType || 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = result.nomeArquivo;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   if (!item) return null;
 
   return (
-    <Modal open={open} title="Detalhes da Solicitação" onClose={onClose} size="xl">
+    <Modal open={open} title="Detalhes da Solicitacao" onClose={onClose} size="xl">
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -105,14 +138,26 @@ export function EmailDetail({ item, open, onClose }: EmailDetailProps) {
         {anexos.length > 0 && (
           <div>
             <label className="text-xs font-medium text-muted-foreground">Anexos ({anexos.length})</label>
-            <div className="mt-1 space-y-1">
+            <div className="mt-1 space-y-2">
               {anexos.map((anexo) => (
-                <div key={anexo.id} className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
-                  <span className="text-sm">📎</span>
-                  <span className="text-sm font-medium">{anexo.nomeArquivo}</span>
-                  <span className="text-xs text-muted-foreground">({formatFileSize(anexo.tamanho)})</span>
-                  {anexo.mimeType && (
-                    <span className="text-xs text-muted-foreground">{anexo.mimeType}</span>
+                <div key={anexo.id}>
+                  <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
+                    <span className="text-sm">📎</span>
+                    <span className="text-sm font-medium">{anexo.nomeArquivo}</span>
+                    <span className="text-xs text-muted-foreground">({formatFileSize(anexo.tamanho)})</span>
+                    {anexo.mimeType && (
+                      <span className="text-xs text-muted-foreground">{anexo.mimeType}</span>
+                    )}
+                    <button
+                      onClick={() => handleDownload(anexo)}
+                      disabled={downloadingId === anexo.id}
+                      className="ml-auto rounded border px-2 py-1 text-xs font-medium hover:bg-accent disabled:opacity-50"
+                    >
+                      {downloadingId === anexo.id ? '...' : 'Baixar'}
+                    </button>
+                  </div>
+                  {isImage(anexo.mimeType) && (
+                    <ImagePreview anexoId={anexo.id} mimeType={anexo.mimeType} />
                   )}
                 </div>
               ))}
@@ -122,11 +167,44 @@ export function EmailDetail({ item, open, onClose }: EmailDetailProps) {
 
         {item.observacoes && (
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Observações</label>
+            <label className="text-xs font-medium text-muted-foreground">Observacoes</label>
             <p className="mt-1 text-sm">{item.observacoes}</p>
           </div>
         )}
       </div>
     </Modal>
+  );
+}
+
+function ImagePreview({ anexoId, mimeType }: { anexoId: number; mimeType: string | null }) {
+  const [src, setSrc] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  const loadPreview = async () => {
+    if (loaded || src) return;
+    const result = await window.osTech.email.downloadAttachment(anexoId);
+    if (result) {
+      setSrc(`data:${mimeType};base64,${result.data}`);
+      setLoaded(true);
+    }
+  };
+
+  return (
+    <div className="mt-2">
+      {!src ? (
+        <button
+          onClick={loadPreview}
+          className="text-xs text-primary hover:underline"
+        >
+          Visualizar imagem
+        </button>
+      ) : (
+        <img
+          src={src}
+          alt="Preview"
+          className="max-h-48 rounded border"
+        />
+      )}
+    </div>
   );
 }
