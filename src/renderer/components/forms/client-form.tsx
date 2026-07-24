@@ -52,7 +52,7 @@ export function ClientForm({ client, onClose, onSuccess, showContatos = true }: 
       return window.osTech.client.create(dadosComContatos);
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['clients-all'] });
       if (onSuccess) {
         onSuccess(result);
       } else {
